@@ -87,8 +87,7 @@ Controller::~Controller(){
 int Controller::completed_reads = 0;
 int Controller::completed_writes = 0;
 
-// 运行FC层时，从片外DRAM加载数据到片上
-// 地址对齐
+// 加载全连接层的输入和权重
 int Controller::load_input_data_fc(int* ifmap, Dram* dram_instance, int num_input_obtained, int num_input_data){
     // num_input_obtained : 已经取过的数据
     // num_input_data ： 本次要取的数据
@@ -96,8 +95,8 @@ int Controller::load_input_data_fc(int* ifmap, Dram* dram_instance, int num_inpu
 
     int bit_num = dram_instance->dram->GetBusBits() * dram_instance->dram->GetBurstLength();  // DRAM一次读取返回的数据量，单位bit
     this->addr_offset = bit_num / 8; // 每次读取数据地址的增量
-    std::cout<<"bit_num : "<<bit_num<<std::endl;
-    std::cout<<"this->addr_offset : "<<this->addr_offset<<std::endl;
+    // std::cout<<"bit_num : "<<bit_num<<std::endl;
+    // std::cout<<"this->addr_offset : "<<this->addr_offset<<std::endl;
 
     int remain_data = num_input_obtained % bit_num; // 因为地址对齐要往前多取的数据
     int num_data = num_input_data;
@@ -106,8 +105,8 @@ int Controller::load_input_data_fc(int* ifmap, Dram* dram_instance, int num_inpu
     int num_input_read_request_copy = num_input_read_request;
     int addr = this->input_offset + num_input_obtained/bit_num *(bit_num/8);
 
-    std::cout<<"addr : "<<addr<<std::endl;
-    std::cout<<"num_input_read_request : "<<num_input_read_request<<std::endl;
+    // std::cout<<"addr : "<<addr<<std::endl;
+    // std::cout<<"num_input_read_request : "<<num_input_read_request<<std::endl;
 
     while(true){
         if(num_input_read_request != 0){
@@ -138,13 +137,12 @@ int Controller::load_input_data_fc(int* ifmap, Dram* dram_instance, int num_inpu
     return local_cycles;
 }  
 
-// 地址对齐
 int Controller::load_weight_data_fc(int* filter, Dram* dram_instance, int i, layer_topology layer_parameters){
     // i : 第几次取权重数据
-    std::cout<<"call load_weight_data_fc and i = "<<i<<std::endl;
-    std::cout<<"filter : "<<filter<<std::endl;
-    std::cout<<"dram_instance : "<<dram_instance<<std::endl;
-    std::cout<<"layer_parameters : "<<layer_parameters.input_neuron<<std::endl;
+    // std::cout<<"call load_weight_data_fc and i = "<<i<<std::endl;
+    // std::cout<<"filter : "<<filter<<std::endl;
+    // std::cout<<"dram_instance : "<<dram_instance<<std::endl;
+    // std::cout<<"layer_parameters : "<<layer_parameters.input_neuron<<std::endl;
     
     int local_cycles = 0;
 
@@ -171,12 +169,12 @@ int Controller::load_weight_data_fc(int* filter, Dram* dram_instance, int i, lay
     // std::cout<<"remain_data : "<<remain_data<<std::endl;
     // std::cout<<"num_data : "<<num_data<<std::endl;
 
-    std::cout<<"num_weight_obtained : "<<num_weight_obtained<<std::endl;
-    std::cout<<"num_weight_data : "<<num_weight_data<<std::endl;
+    // std::cout<<"num_weight_obtained : "<<num_weight_obtained<<std::endl;
+    // std::cout<<"num_weight_data : "<<num_weight_data<<std::endl;
 
     int num_weight_read_request = std::ceil((remain_data+num_data) / (float)bit_num);
     int num_weight_read_request_copy = num_weight_read_request;    
-    std::cout<<"num_weight_read_request : "<<num_weight_read_request<<std::endl;
+    // std::cout<<"num_weight_read_request : "<<num_weight_read_request<<std::endl;
 
     int addr = this->weight_offset + (num_weight_obtained*this->weight_width)/bit_num * (bit_num/8);
 
@@ -220,8 +218,7 @@ int Controller::load_weight_data_fc(int* filter, Dram* dram_instance, int i, lay
     return local_cycles;
 }
 
-// 双buffer
-// 地址对齐64字节
+// 加载卷积层的权重数据
 int Controller::load_weight_data_ppbuffer(int* filter, Dram* dram_instance, int num_weight_obtained, int num_weight_data){
     // num_weight_obtained ： 已经取出的数据数，用于计算读取地址
     // num_weight_data : 要加载的数据个数
@@ -270,11 +267,10 @@ int Controller::load_weight_data_ppbuffer(int* filter, Dram* dram_instance, int 
     return local_cycles;
 }
 
-// 双buffer，buffer中已经进行padding处理
-// 输入特征图在DRAM中以通道前置的方式存储
+
 int Controller::load_input_data_CHW(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters){
     // j : 第几行卷积
-    std::cout<<" call load_input_data_CHW and    j = "<<j<<std::endl;
+    //std::cout<<" call load_input_data_CHW and    j = "<<j<<std::endl;
     int local_cycles = 0;
 
     int bit_num = dram_instance->dram->GetBusBits() * dram_instance->dram->GetBurstLength();  // DRAM一次读取返回的数据量，单位bit
@@ -306,15 +302,15 @@ int Controller::load_input_data_CHW(int layer_id, int* ifmap, Dram* dram_instanc
     while(true){
         while(only){
             for(int c=0; c<layer_parameters.C; c++){  // 遍历每个输入通道
-                std::cout<<"c: "<<c<<std::endl;
+                //std::cout<<"c: "<<c<<std::endl;
 
                 int remain_data = (c*X*Y + start_rows*Y) % bit_num;  // 因为数据对齐，要往前多读的数据个数
                 int num_data = num_rows*Y;  // 本次要取的数据个数
 
                 int current_num_read_request = std::ceil((remain_data+num_data) / (float)bit_num);
-                std::cout<<"remain_data : "<<remain_data<<std::endl;
-                std::cout<<"num_data : "<<num_data<<std::endl;
-                std::cout<<"current_num_read_request : "<<current_num_read_request<<std::endl;
+                //std::cout<<"remain_data : "<<remain_data<<std::endl;
+                //std::cout<<"num_data : "<<num_data<<std::endl;
+                //std::cout<<"current_num_read_request : "<<current_num_read_request<<std::endl;
 
                 num_total_read_request += current_num_read_request;
                 
@@ -377,16 +373,15 @@ int Controller::load_input_data_CHW(int layer_id, int* ifmap, Dram* dram_instanc
         local_cycles++;
     }
 
-    std::cout<<"num_total_read_request : "<<num_total_read_request<<std::endl;
-    std::cout<<std::endl;
+    //std::cout<<"num_total_read_request : "<<num_total_read_request<<std::endl;
+    //std::cout<<std::endl;
 
     return local_cycles;
 }
 
-// 输入特征图在DRAM中以通道后置的方式存储
 int Controller::load_input_data_HWC(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters){
 
-    std::cout<<" call load_input_data_HWC and    j = "<<j<<std::endl;
+    //std::cout<<" call load_input_data_HWC and    j = "<<j<<std::endl;
     int local_cycles = 0;
 
     int bit_num = dram_instance->dram->GetBusBits() * dram_instance->dram->GetBurstLength();  // DRAM一次读取返回的数据量，单位bit
@@ -412,7 +407,7 @@ int Controller::load_input_data_HWC(int layer_id, int* ifmap, Dram* dram_instanc
     int remain_data = (start_rows*Y*C)%bit_num;  // 因为地址对齐要往前多读的数据
     int num_read_input_request = std::ceil((num_data+remain_data)/(float)bit_num); // 需要发送的请求个数
     int num_read_input_request_copy = num_read_input_request;
-    std::cout<<"num_read_input_request : "<<num_read_input_request<<std::endl;
+    //std::cout<<"num_read_input_request : "<<num_read_input_request<<std::endl;
 
     int addr = this->input_offset + (start_rows*Y*C)/bit_num * (bit_num/8); // 起始地址
     while(true){
@@ -471,10 +466,10 @@ int Controller::load_input_data_HCW(int layer_id, int* ifmap, Dram* dram_instanc
     int add_0_above = this->records[j].add_0_above;
     int add_0_below = this->records[j].add_0_below;
 
-    std::cout<<"start_rows : "<<start_rows<<std::endl;
-    std::cout<<"num_rows : "<<num_rows<<std::endl;
-    std::cout<<"add_0_above : "<<add_0_above<<std::endl;
-    std::cout<<"add_0_below : "<<add_0_below<<std::endl;
+    // std::cout<<"start_rows : "<<start_rows<<std::endl;
+    // std::cout<<"num_rows : "<<num_rows<<std::endl;
+    // std::cout<<"add_0_above : "<<add_0_above<<std::endl;
+    // std::cout<<"add_0_below : "<<add_0_below<<std::endl;
 
     int X = layer_parameters.X;
     int Y = layer_parameters.Y;
@@ -486,7 +481,7 @@ int Controller::load_input_data_HCW(int layer_id, int* ifmap, Dram* dram_instanc
     int remain_data = (start_rows*Y*C)%bit_num;  // 因为地址对齐要往前多读的数据
     int num_read_input_request = std::ceil((num_data+remain_data)/(float)bit_num); // 需要发送的请求个数
     int num_read_input_request_copy = num_read_input_request;
-    std::cout<<"num_read_input_request : "<<num_read_input_request<<std::endl;
+    // std::cout<<"num_read_input_request : "<<num_read_input_request<<std::endl;
 
     int addr = this->input_offset + (start_rows*Y*C)/bit_num * (bit_num/8); // 起始地址
     while(true){
@@ -539,8 +534,133 @@ int Controller::load_input_data_HCW(int layer_id, int* ifmap, Dram* dram_instanc
     return local_cycles;
 }
 
-// 将神经元状态写入DRAM，在执行层convandpooling时调用
-int Controller::store_neuron_state(int* nfmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters){
+int Controller::load_input_data_HCW_bank(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters){
+    // std::cout<<"-------------- call load_input_data_HCW_bank ----------------"<<std::endl;
+    // std::cout<<"                   j : "<<j<<std::endl;
+    
+    int local_cycles = 0;
+
+    int bit_num = dram_instance->dram->GetBusBits() * dram_instance->dram->GetBurstLength();  // DRAM一次读取返回的数据量，单位bit
+    this->addr_offset = bit_num / 8; // 每次读取数据地址的增量
+
+    // int num_rows = this->records[j].num_rows; // 取多少行数据
+    // int start_rows = this->records[j].start_rows; //起始行
+    // int add_0_above = this->records[j].add_0_above;
+    // int add_0_below = this->records[j].add_0_below;
+
+    int X = layer_parameters.X;
+    int Y = layer_parameters.Y;
+    int C = layer_parameters.C;
+    int R = layer_parameters.R;
+    int P = layer_parameters.P;
+    int stride = layer_parameters.stride;
+    int Y_padded = layer_parameters.Y + 2*layer_parameters.P;
+    int X_ = (X + 2*P - R)/stride + 1;
+
+    assert(P==1); // 目前只支持P==1的池化
+
+    int num_data;
+    int remain_data = 0;
+    int num_read_input_request;
+    int num_read_input_request_copy;
+    int addr;
+    int rows_index;
+    if(j==0){ // 第一次取数据，取(R-P)行
+        num_data = (R-P)*C*Y; // 要从DRAM中取多少数据
+        num_read_input_request = std::ceil(num_data/(float)bit_num);
+        num_read_input_request_copy = num_read_input_request;
+        addr = this->input_offset;
+        // std::cout<<"num_read_input_request : "<<num_read_input_request<<std::endl;
+        // std::cout<<"addr : "<<addr<<std::endl;
+    } else if(j==X_-1 && P>0) { // 最后一次取数据，如果P>0，不用取数据，直接补0
+        for(int num=0; num<Y_padded*C; num++){
+            this->ppbuf_bank->next_buffer[num] = 0;
+        }
+        return 0;
+    } else {  // 取一行数据到this->ppbuf_bank->next_buffer;
+        rows_index = R-P-1+j;  // 取数据的行索引
+        // std::cout<<"rows_index : "<<rows_index<<std::endl;
+        remain_data = (rows_index*C*Y)%bit_num;
+        num_data = C*Y;
+        num_read_input_request = std::ceil((remain_data+num_data)/(float)bit_num);
+        num_read_input_request_copy = num_read_input_request;
+        addr = this->input_offset + (rows_index*C*Y)/bit_num*(bit_num/8);
+    }
+
+    while(true){
+        if(num_read_input_request != 0){
+            std::shared_ptr<RequestPackage> read_request = std::make_shared<RequestPackage>(addr,false);  // 读请求
+            //std::cout<<"read weight addr is : "<<addr<<std::endl;
+            this->read_request_fifo->push(read_request);
+            addr += this->addr_offset;
+            num_read_input_request--;
+            
+            this->dram_read_nums++;
+            this->dram_read_input_nums++;
+        }
+
+        if(completed_reads == num_read_input_request_copy){  // 读请求处理完毕
+            completed_reads = 0;
+
+            if(j==0){
+                for(int num=0; num<C*Y_padded; num++){
+                    this->input_base_bank_0[num] = 0;
+                }
+                for(int channels=0; channels<C; channels++){
+                    this->input_base_bank_1[channels*Y_padded] = 0;
+                    this->ppbuf_bank->next_buffer[channels*Y_padded] = 0;
+                    this->input_base_bank_1[channels*Y_padded + P + Y] = 0;
+                    this->ppbuf_bank->next_buffer[channels*Y_padded + P + Y] = 0;
+
+                    for(int num=0; num<Y; num++){
+                        this->input_base_bank_1[channels*Y_padded + P + num] = ifmap[channels*Y+num]; // 第一行数据
+                        this->ppbuf_bank->next_buffer[channels*Y_padded + P + num] = ifmap[C*Y + channels*Y + num]; // 第二行数据
+                    }
+                }
+            } else {  // 只取一行数据（一个平面）
+                for(int channels=0; channels<C; channels++){
+                    this->ppbuf_bank->next_buffer[channels*Y_padded] = 0;
+                    this->ppbuf_bank->next_buffer[channels*Y_padded + P + Y] = 0;
+                    for(int num=0; num<Y; num++){
+                        this->ppbuf_bank->next_buffer[channels*Y_padded + P + num] = ifmap[rows_index*Y*C + channels*Y +num];
+                    }
+                }
+            }
+
+            break;
+        }
+
+        dram_instance->run();
+        local_cycles++;
+    }
+
+    // std::cout<<"below is input_buffer data : "<<std::endl;
+    // for(int channels=0; channels<C; channels++){
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     std::cout<<"bank1:"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         //std::cout<<"num : "<<num<<std::endl;
+    //         std::cout<<this->input_base_bank_0[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    //     std::cout<<"bank2"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         std::cout<<this->input_base_bank_1[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    //     std::cout<<"bank3"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         std::cout<<this->ppbuf_bank->next_buffer[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    // }
+    // std::cout<<std::endl;
+
+    return local_cycles;
+}
+
+
+int Controller::store_neuron_state_CHW(int* nfmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters){
     // i : 权重循环
     // cols : 输出通道数
     int local_cycles = 0;
@@ -556,7 +676,7 @@ int Controller::store_neuron_state(int* nfmap, Dram* dram_instance, int i, int c
     int remain_neuron_state_data = (i*X_*Y_*this->stonne_cfg.m_MSNetworkCfg.ms_cols*this->neuron_state_width) % bit_num;
     int num_neuron_state_write_request = std::ceil((remain_neuron_state_data + num_neuron_state) / (float)bit_num);
     int num_neuron_state_write_request_copy = num_neuron_state_write_request;
-    std::cout<<"num_neuron_state_write_request : "<<num_neuron_state_write_request<<std::endl;
+    //std::cout<<"num_neuron_state_write_request : "<<num_neuron_state_write_request<<std::endl;
 
     int addr_neuron_state = this->neuron_state_offset +  (i*X_*Y_*this->stonne_cfg.m_MSNetworkCfg.ms_cols*this->neuron_state_width)/bit_num * (bit_num/8);
     while(true){
@@ -701,8 +821,8 @@ int Controller::store_neuron_state_HCW(int* nfmap, Dram* dram_instance, int i, i
     return local_cycles;
 }
 
-// 将池化结果写入DRAM，在执行层convandpooling时调用
-int Controller::store_pooling_output(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters){
+
+int Controller::store_pooling_output_CHW(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters){
     // X_pool = (j-1)/2  当前输出行（池化结果）在输出特征图的第几行
     int local_cycles = 0;
     
@@ -717,7 +837,7 @@ int Controller::store_pooling_output(int* ofmap, Dram* dram_instance, int i, int
     int remain_output_data = (i*X_*Y_/4*this->stonne_cfg.m_MSNetworkCfg.ms_cols) % bit_num;
     int num_output_write_requset = std::ceil((remain_output_data + num_output) / (float)bit_num);
     int num_output_write_request_copy = num_output_write_requset;
-    std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
+    // std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
 
     int addr_output = this->output_offset + (i*X_*Y_/4*this->stonne_cfg.m_MSNetworkCfg.ms_cols)/bit_num * (bit_num/8);
     while(true){
@@ -748,9 +868,8 @@ int Controller::store_pooling_output(int* ofmap, Dram* dram_instance, int i, int
     return local_cycles;
 }
 
-// 通道后置
 int Controller::store_pooling_output_HWC(int* ofmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters){
-    std::cout<<"call store_pooling_output_HWC-----------------------------"<<std::endl;
+    //std::cout<<"call store_pooling_output_HWC-----------------------------"<<std::endl;
     int local_cycles = 0;
     // 进行地址对齐
     int bit_num = dram_instance->dram->GetBusBits() * dram_instance->dram->GetBurstLength();  // DRAM一次读取返回的数据量，单位bit
@@ -762,7 +881,7 @@ int Controller::store_pooling_output_HWC(int* ofmap, Dram* dram_instance, int i,
 
     j = (j-1)/2;  // 该输出行在池化后的特征图中的位置
 
-    std::cout<<"j : "<<j<<std::endl;
+    // std::cout<<"j : "<<j<<std::endl;
 
     int num_total_write_request = 0;
     bool only = true;
@@ -809,7 +928,7 @@ int Controller::store_pooling_output_HWC(int* ofmap, Dram* dram_instance, int i,
         local_cycles++;
     }
 
-    std::cout<<"num_total_write_request : "<<num_total_write_request<<std::endl;
+    // std::cout<<"num_total_write_request : "<<num_total_write_request<<std::endl;
 
     // int output_buffer_size = Y_/2 * this->stonne_cfg.m_MSNetworkCfg.ms_cols; 
     // std::memset(this->output_buffer, 0, sizeof(int) * output_buffer_size);
@@ -819,7 +938,7 @@ int Controller::store_pooling_output_HWC(int* ofmap, Dram* dram_instance, int i,
 }
 
 int Controller::store_pooling_output_HCW(int* ofmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters){
-    std::cout<<"call store_pooling_output_HCW-----------------------------"<<std::endl;
+    //std::cout<<"call store_pooling_output_HCW-----------------------------"<<std::endl;
     int local_cycles = 0;
 
     // 进行地址对齐
@@ -836,7 +955,7 @@ int Controller::store_pooling_output_HCW(int* ofmap, Dram* dram_instance, int i,
     int remain_data = (j*Y_/2*K + i*stonne_cfg.m_MSNetworkCfg.ms_cols*Y_/2)%bit_num;
     int num_output_write_requset = std::ceil((num_output+remain_data)/(float)bit_num);
     int num_output_write_request_copy = num_output_write_requset;
-    std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
+    // std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
 
     int addr = this->output_offset + (j*Y_/2*K + i*stonne_cfg.m_MSNetworkCfg.ms_cols*Y_/2)/bit_num * (bit_num/8);
     while(true){
@@ -869,7 +988,8 @@ int Controller::store_pooling_output_HCW(int* ofmap, Dram* dram_instance, int i,
     return local_cycles;
 }
 
-int Controller::store_conv_output(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters){
+
+int Controller::store_conv_output_CHW(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters){
     int local_cycles = 0;
 
     int bit_num = dram_instance->dram->GetBusBits() * dram_instance->dram->GetBurstLength();  // DRAM一次读取返回的数据量，单位bit
@@ -882,7 +1002,7 @@ int Controller::store_conv_output(int* ofmap, Dram* dram_instance, int i, int co
     int remain_output_data = (i*X_*Y_*this->stonne_cfg.m_MSNetworkCfg.ms_cols) % bit_num;
     int num_output_write_requset = std::ceil((remain_output_data + num_output) / (float)bit_num);
     int num_output_write_request_copy = num_output_write_requset;
-    std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
+    //std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
 
     int addr_output = this->output_offset + (i*X_*Y_*this->stonne_cfg.m_MSNetworkCfg.ms_cols)/bit_num * (bit_num/8);
 
@@ -991,7 +1111,7 @@ int Controller::store_conv_output_HCW(int* ofmap, Dram* dram_instance, int i, in
     int remain_data = (j*Y_*K + i*stonne_cfg.m_MSNetworkCfg.ms_cols*Y_ )%bit_num;
     int num_output_write_requset = std::ceil((num_output+remain_data)/(float)bit_num);
     int num_output_write_request_copy = num_output_write_requset;
-    std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
+    //std::cout<<"num_output_write_requset : "<<num_output_write_requset<<std::endl;
 
     int addr = this->output_offset + (j*Y_*K + i*stonne_cfg.m_MSNetworkCfg.ms_cols*Y_)/bit_num * (bit_num/8);
     while(true){
@@ -1025,14 +1145,14 @@ int Controller::store_conv_output_HCW(int* ofmap, Dram* dram_instance, int i, in
     return local_cycles;
 }
 
-// 将全连接层的输出和神经元状态写入DRAM
+
 int Controller::store_output_and_neuronstate_data_fc(int* ofmap, int* nfmap, Dram* dram_instance, int num_output_obtained, int num_output_write_once, layer_topology layer_parameters){
     // i : 权重循环
 
-    std::cout<<"--------------------- call store_output_and_neuronstate_data_fc ------------------------"<<std::endl;
-    std::cout<<"this->output_buffer[0] : "<<this->output_buffer[0]<<std::endl;
-    std::cout<<"num_output_obtained : "<<num_output_obtained<<std::endl;
-    std::cout<<"num_output_write_once : "<<num_output_write_once<<std::endl;
+    // std::cout<<"--------------------- call store_output_and_neuronstate_data_fc ------------------------"<<std::endl;
+    // std::cout<<"this->output_buffer[0] : "<<this->output_buffer[0]<<std::endl;
+    // std::cout<<"num_output_obtained : "<<num_output_obtained<<std::endl;
+    // std::cout<<"num_output_write_once : "<<num_output_write_once<<std::endl;
     int local_cycles = 0;
 
     // 进行地址对齐
@@ -1045,8 +1165,8 @@ int Controller::store_output_and_neuronstate_data_fc(int* ofmap, int* nfmap, Dra
     int num_output_write_request = std::ceil(num_output/(float)bit_num);
     int num_neuron_state_write_request = std::ceil(num_neuron_state/(float)bit_num);
 
-    std::cout<<"num_output_write_request : "<<num_output_write_request<<std::endl;
-    std::cout<<"num_neuron_state_write_request : "<<num_neuron_state_write_request<<std::endl;
+    // std::cout<<"num_output_write_request : "<<num_output_write_request<<std::endl;
+    // std::cout<<"num_neuron_state_write_request : "<<num_neuron_state_write_request<<std::endl;
 
     int num_output_write_request_copy = num_output_write_request;
     int num_neuron_state_write_request_copy = num_neuron_state_write_request;    
@@ -1153,11 +1273,10 @@ int Controller::store_output_and_neuronstate_data_fc(int* ofmap, int* nfmap, Dra
     return local_cycles;
 }
 
-// 执行全连接的计算
 int Controller::process_fc(int i, layer_topology layer_parameters){
 
-    std::cout<<"--------------------call process_fc--------------------"<<std::endl;
-    std::cout<<"         i : "<<i<<std::endl;
+    // std::cout<<"--------------------call process_fc--------------------"<<std::endl;
+    // std::cout<<"         i : "<<i<<std::endl;
     int local_cycles = 0;
     
     // 输入输出层神经元个数
@@ -1215,8 +1334,8 @@ int Controller::process_fc(int i, layer_topology layer_parameters){
             assert(false);
         }
     }
-    std::cout<<"this->output_regfile_conv[0] : "<<this->output_regfile_conv[0]<<std::endl;
-    std::cout << "\033[1;32mTest passed correctly \033[0m" << std::endl << std::endl;
+    // std::cout<<"this->output_regfile_conv[0] : "<<this->output_regfile_conv[0]<<std::endl;
+    // std::cout << "\033[1;32mTest passed correctly \033[0m" << std::endl << std::endl;
 
     // 将寄存器文件中的输出结果累积到输出buffer
     for(int num=0; num<rows; num++){
@@ -1225,12 +1344,6 @@ int Controller::process_fc(int i, layer_topology layer_parameters){
         this->output_buffer[(i*this->stonne_cfg.m_MSNetworkCfg.ms_rows)%512 + num] = this->output_regfile_conv[num];
         this->neuron_state_buffer[(i*this->stonne_cfg.m_MSNetworkCfg.ms_rows)%512 + num] = this->neuron_state_regfile_conv[num];
     }
-
-    std::cout<<"this->output_buffer[0] : "<<this->output_buffer[0]<<std::endl;
-
-    // if((i*this->stonne_cfg.m_MSNetworkCfg.ms_rows + rows) >= 512 ){
-    //     this->write_flag = true;
-    // }
 
     //std::cout<<"debug 1"<<std::endl;
     delete stonne_instance;
@@ -1247,7 +1360,7 @@ int Controller::process_fc(int i, layer_topology layer_parameters){
     return local_cycles;
 }
 
-// 输入为双buffer，input_arranged_buffer为双buffer
+
 int Controller::im2col_CHW(int start, int num, layer_topology layer_parameters){
     // start : 起始的窗口
     // num ： 一共有多少个窗口
@@ -1331,6 +1444,7 @@ int Controller::im2col_CHW(int start, int num, layer_topology layer_parameters){
 
     return local_cycles;
 }
+
 int Controller::im2col_HWC(int start, int num, layer_topology layer_parameters){
     // start : 起始的窗口
     // num ： 一共有多少个窗口
@@ -1398,10 +1512,11 @@ int Controller::im2col_HWC(int start, int num, layer_topology layer_parameters){
 
     return local_cycles;
 }
+
 int Controller::im2col_HCW(int start, int num, layer_topology layer_parameters){
     // start : 起始的窗口
     // num ： 一共有多少个窗口
-    std::cout<<"========== call im2col_HCW ============"<<std::endl;
+    // std::cout<<"========== call im2col_HCW ============"<<std::endl;
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -1466,9 +1581,76 @@ int Controller::im2col_HCW(int start, int num, layer_topology layer_parameters){
     return local_cycles;
 }
 
-// 在process_conv_2的基础上，进一步将input_arranged_buffer设置为双buffer
-int Controller::process_conv_3(int layer_id, int i, int j, int cols, layer_topology layer_parameters){
-    //std::cout<<"call process_conv_3"<<std::endl;
+int Controller::im2col_HCW_bank(int start, int num, layer_topology layer_parameters){
+    // std::cout<<"========== call im2col_HCW_bank ============"<<std::endl;
+    // std::cout<<"start : "<<start<<std::endl;
+    // std::cout<<"num : "<<num<<std::endl;
+    int local_cycles = 0;
+
+    int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
+    int Y_ = (layer_parameters.Y - layer_parameters.S + 2*layer_parameters.P)/layer_parameters.stride + 1;
+    int R = layer_parameters.R;
+    int S = layer_parameters.S;
+    int C = layer_parameters.C;
+    int X = layer_parameters.X;
+    int Y = layer_parameters.Y;
+    int P = layer_parameters.P;
+    int Y_padded = Y + 2*P;
+
+    int flag = 0;
+    if(start==0){
+        for(int p=0; p<C; p++){
+            for(int q=0; q<S; q++){
+                this->im2col_bank[p*S + q] = this->input_base_bank_0[p*Y_padded + q];
+                this->im2col_bank[C*S + p*S + q] = this->input_base_bank_1[p*Y_padded + q];
+                this->im2col_bank[2*C*S +p*S + q] = this->ppbuf_bank->current_buffer[p*Y_padded + q];
+                local_cycles++;
+            }
+        }
+
+        // std::cout<<"The sorted data is : "<<std::endl;
+        // for(int p=0; p<this->bankSize; p++){
+        //     std::cout<<this->im2col_bank[p]<<"  ";
+        // }
+        // std::cout<<std::endl;
+
+        // 将排序好的数据写入待机算buffer
+        for(int i=0; i<this->bankSize; i++){
+            this->ppbuf_input_arranged->next_buffer[i] = this->im2col_bank[i];
+        }
+        flag = 1;
+        num--;
+        start++;
+    }
+
+    for(int i=0; i<num; i++){
+        for(int r=0; r<R; r++){
+            for(int p=0; p<C; p++){
+                for(int q=0; q<(S-1); q++){ // 移位
+                    this->im2col_bank[r*C*S + p*S + q] = this->im2col_bank[r*C*S + p*S + q + 1];
+                }   
+            }
+        }
+
+        // 取数据
+        for(int p=0; p<C; p++){
+            this->im2col_bank[p*S + (S-1)] = this->input_base_bank_0[p*Y_padded + (S+(start+i)-1)];
+            this->im2col_bank[C*S + p*S + (S-1)] = this->input_base_bank_1[p*Y_padded + (S+(start+i)-1)];
+            this->im2col_bank[2*C*S + p*S + (S-1)] = this->ppbuf_bank->current_buffer[p*Y_padded + (S+(start+i)-1)];
+            local_cycles++;
+        }
+
+        for(int j=0; j<this->bankSize; j++){
+            this->ppbuf_input_arranged->next_buffer[(flag+i)*this->bankSize + j] = this->im2col_bank[j];
+        }
+    }
+
+    return local_cycles;
+}
+
+
+int Controller::process_conv_CHW(int layer_id, int i, int j, int cols, layer_topology layer_parameters){
+    //std::cout<<"call process_conv_CHW"<<std::endl;
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -1529,6 +1711,7 @@ int Controller::process_conv_3(int layer_id, int i, int j, int cols, layer_topol
     int n_cycles_im2col = im2col_CHW(0,num,layer_parameters);
     local_cycles += n_cycles_im2col;
     PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+    //std::cout<<"Sort first input_arranged : "<<n_cycles_im2col<<std::endl;
 
     for(int num_tile=0; num_tile<std::ceil(Y_/(float)this->numBanks); num_tile++){
         // std::cout<<"current num_tile : "<<num_tile<<"-------------"<<std::endl;
@@ -1539,10 +1722,10 @@ int Controller::process_conv_3(int layer_id, int i, int j, int cols, layer_topol
             int num = end-start;
             // 调用转换函数
             n_cycles_im2col = im2col_CHW(start, num, layer_parameters);
-            // std::cout<<"Sort next input_arranged : "<<n_cycles_im2col<<std::endl;
+            //std::cout<<"Sort next input_arranged : "<<n_cycles_im2col<<std::endl;
         } else {
             n_cycles_im2col = 0;
-            // std::cout<<"Sort next input_arranged : "<<n_cycles_im2col<<std::endl;
+            //std::cout<<"Sort next input_arranged : "<<n_cycles_im2col<<std::endl;
         }
 
         int start_current = num_tile*this->numBanks;
@@ -1565,7 +1748,7 @@ int Controller::process_conv_3(int layer_id, int i, int j, int cols, layer_topol
         stonne_instance->n_cycles = 0;
         stonne_instance->run();
         int n_cycles_compute = stonne_instance->n_cycles;  // 计算所需时间
-        // std::cout<<"compute the tile need cycles : "<<n_cycles_compute<<std::endl;
+        //std::cout<<"compute the tile need cycles : "<<n_cycles_compute<<std::endl;
         local_cycles += std::max(n_cycles_im2col, n_cycles_compute);
         // std::cout<<"current local_cycles is : "<<local_cycles<<std::endl;
         PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
@@ -1615,7 +1798,7 @@ int Controller::process_conv_3(int layer_id, int i, int j, int cols, layer_topol
 
     return local_cycles;
 }
-// 通道后置
+
 int Controller::process_conv_HWC(int layer_id, int i, int j, int cols, layer_topology layer_parameters) {
     int local_cycles = 0;
 
@@ -1678,23 +1861,23 @@ int Controller::process_conv_HWC(int layer_id, int i, int j, int cols, layer_top
         int end_current = std::min<int>(start_current+this->numBanks, Y_);
         int num_current = end_current-start_current;
 
-        std::cout<<"below is this->ppbuf_input_arranged->current_buffer data : "<<std::endl;
-        for(int p=0; p<num_current; p++){
-            for(int q=0; q<this->bankSize; q++){
-                std::cout<<this->ppbuf_input_arranged->current_buffer[p*this->bankSize + q]<<"  ";
-            }
-            std::cout<<std::endl;
-        }
-        std::cout<<std::endl;
+        // std::cout<<"below is this->ppbuf_input_arranged->current_buffer data : "<<std::endl;
+        // for(int p=0; p<num_current; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_input_arranged->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
 
-        std::cout<<"below is this->ppbuf_weight->current_buffer data : "<<std::endl;
-        for(int p=0; p<cols; p++){
-            for(int q=0; q<this->bankSize; q++){
-                std::cout<<this->ppbuf_weight->current_buffer[p*this->bankSize + q]<<"  ";
-            }
-            std::cout<<std::endl;
-        }
-        std::cout<<std::endl;
+        // std::cout<<"below is this->ppbuf_weight->current_buffer data : "<<std::endl;
+        // for(int p=0; p<cols; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_weight->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
 
 
         // 调用脉动阵列，下面的计算过程和对下一个tile的数据进行排序是并行的
@@ -1759,9 +1942,9 @@ int Controller::process_conv_HWC(int layer_id, int i, int j, int cols, layer_top
 
     return local_cycles;
 }
-// 通道中置
+
 int Controller::process_conv_HCW(int layer_id, int i, int j, int cols, layer_topology layer_parameters) {
-    std::cout<<"------------ call process_conv_HCW -----------"<<std::endl;
+    // std::cout<<"------------ call process_conv_HCW -----------"<<std::endl;
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -1775,21 +1958,21 @@ int Controller::process_conv_HCW(int layer_id, int i, int j, int cols, layer_top
     int Y_padded = Y + 2*P;
 
 
-    std::cout<<"below is input_buffer data : "<<std::endl;
+    // std::cout<<"below is input_buffer data : "<<std::endl;
 
-    for(int channels=0; channels<C; channels++){
-        std::cout<<"channels : "<<channels<<std::endl;
-        for(int p=0; p<R; p++){
-            for(int q=0; q<Y_padded; q++){
-                // int index = p * Y_padded * C + q * C + channels;  // HWC layout
-                int index = p * C * Y_padded + channels * Y_padded + q; // HCW layout
-                std::cout<<this->ppbuf_input->current_buffer[index]<<"  ";
-            }
-            std::cout<<std::endl;
-        }
-        std::cout<<std::endl;
-    }
-    std::cout<<std::endl;
+    // for(int channels=0; channels<C; channels++){
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     for(int p=0; p<R; p++){
+    //         for(int q=0; q<Y_padded; q++){
+    //             // int index = p * Y_padded * C + q * C + channels;  // HWC layout
+    //             int index = p * C * Y_padded + channels * Y_padded + q; // HCW layout
+    //             std::cout<<this->ppbuf_input->current_buffer[index]<<"  ";
+    //         }
+    //         std::cout<<std::endl;
+    //     }
+    //     std::cout<<std::endl;
+    // }
+    // std::cout<<std::endl;
 
     // 片外数据读取到片上buffer之后，对输入数据进行重排
     this->bankSize = R*S*C;
@@ -1818,6 +2001,7 @@ int Controller::process_conv_HCW(int layer_id, int i, int j, int cols, layer_top
         num = Y_;
     }
     int n_cycles_im2col = im2col_HCW(0,num,layer_parameters);
+    // std::cout<<"Sort first input_arranged : "<<n_cycles_im2col<<std::endl;
     local_cycles += n_cycles_im2col;
     PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
 
@@ -1840,23 +2024,23 @@ int Controller::process_conv_HCW(int layer_id, int i, int j, int cols, layer_top
         int end_current = std::min<int>(start_current+this->numBanks, Y_);
         int num_current = end_current-start_current;
 
-        std::cout<<"below is this->ppbuf_input_arranged->current_buffer data : "<<std::endl;
-        for(int p=0; p<num_current; p++){
-            for(int q=0; q<this->bankSize; q++){
-                std::cout<<this->ppbuf_input_arranged->current_buffer[p*this->bankSize + q]<<"  ";
-            }
-            std::cout<<std::endl;
-        }
-        std::cout<<std::endl;
+        // std::cout<<"below is this->ppbuf_input_arranged->current_buffer data : "<<std::endl;
+        // for(int p=0; p<num_current; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_input_arranged->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
 
-        std::cout<<"below is this->ppbuf_weight->current_buffer data : "<<std::endl;
-        for(int p=0; p<cols; p++){
-            for(int q=0; q<this->bankSize; q++){
-                std::cout<<this->ppbuf_weight->current_buffer[p*this->bankSize + q]<<"  ";
-            }
-            std::cout<<std::endl;
-        }
-        std::cout<<std::endl;
+        // std::cout<<"below is this->ppbuf_weight->current_buffer data : "<<std::endl;
+        // for(int p=0; p<cols; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_weight->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
 
 
         // 调用脉动阵列，下面的计算过程和对下一个tile的数据进行排序是并行的
@@ -1885,10 +2069,10 @@ int Controller::process_conv_HCW(int layer_id, int i, int j, int cols, layer_top
                 assert(false);
             }
         }
-        std::cout<<"************************************"<<std::endl;
-        std::cout<<"this->output_buffer[1] : "<<this->output_buffer[1]<<std::endl;
-        std::cout<<"this->neuron_state_buffer[1] : "<<this->neuron_state_buffer[1]<<std::endl;
-        std::cout<<"************************************"<<std::endl;
+        // std::cout<<"************************************"<<std::endl;
+        // std::cout<<"this->output_buffer[1] : "<<this->output_buffer[1]<<std::endl;
+        // std::cout<<"this->neuron_state_buffer[1] : "<<this->neuron_state_buffer[1]<<std::endl;
+        // std::cout<<"************************************"<<std::endl;
     }
 
     // 遍历每一列，将寄存器文件中的内容进行转置存储在输出buffer中
@@ -1921,8 +2105,182 @@ int Controller::process_conv_HCW(int layer_id, int i, int j, int cols, layer_top
     return local_cycles;
 }
 
-// 执行一个input_buffer数据的卷积和池化
-int Controller::process_conv_and_pooling(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters){
+int Controller::process_conv_HCW_bank(int layer_id, int i, int j, int cols, layer_topology layer_parameters){
+    //std::cout<<"------------ call process_conv_HCW_bank -----------"<<std::endl;
+    int local_cycles = 0;
+
+    int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
+    int Y_ = (layer_parameters.Y - layer_parameters.S + 2*layer_parameters.P)/layer_parameters.stride + 1;
+    int R = layer_parameters.R;
+    int S = layer_parameters.S;
+    int C = layer_parameters.C;
+    int X = layer_parameters.X;
+    int Y = layer_parameters.Y;
+    int P = layer_parameters.P;
+    int Y_padded = Y + 2*P;
+
+
+    // std::cout<<"below is input_buffer data : "<<std::endl;
+
+    // for(int channels=0; channels<C; channels++){
+    //     //std::cout<<"debug"<<std::endl;
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     //std::cout<<"bank1:"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         //std::cout<<"num : "<<num<<std::endl;
+    //         std::cout<<this->input_base_bank_0[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    //     //std::cout<<"bank2"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         std::cout<<this->input_base_bank_1[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    //     //std::cout<<"bank3"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         std::cout<<this->ppbuf_bank->current_buffer[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    // }
+    // std::cout<<std::endl;
+
+    // 片外数据读取到片上buffer之后，对输入数据进行重排
+    this->bankSize = R*S*C;
+    this->numBanks = this->stonne_cfg.m_MSNetworkCfg.ms_rows;
+    this->im2col_bank.assign(this->bankSize,0); // 初始化，确定大小
+
+    // 排序buffer设置为双buffer
+    int input_arranged_buffer_size = this->bankSize*this->stonne_cfg.m_MSNetworkCfg.ms_rows;
+    this->ppbuf_input_arranged = new PingPong_Buffer;
+    this->input_arranged_buffer_0 = new int[input_arranged_buffer_size];
+    this->input_arranged_buffer_1 = new int[input_arranged_buffer_size];
+    PingPongBuffer_Init(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+
+    // 例化脉动阵列组件，执行矩阵乘法
+    Stonne* stonne_instance = new Stonne(this->stonne_cfg);
+    this->output_regfile_conv = new int[Y_*cols]();
+    this->output_regfile_conv_cpu = new int[Y_*cols]();
+    this->neuron_state_regfile_conv = new int[Y_*cols]();
+    this->neuron_state_regfile_conv_cpu = new int[Y_*cols]();
+
+    // 第一次排序，将排序好的数据存在next_buffer中
+    int num;
+    if(Y_ >= this->numBanks){
+        num = this->numBanks;
+    } else {
+        num = Y_;
+    }
+    int n_cycles_im2col = im2col_HCW_bank(0,num,layer_parameters);
+    // std::cout<<"Sort first input_arranged : "<<n_cycles_im2col<<std::endl;
+    local_cycles += n_cycles_im2col;
+    PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+
+    for(int num_tile=0; num_tile<std::ceil(Y_/(float)this->numBanks); num_tile++){
+        int n_cycles_im2col;
+        if(num_tile+1 < std::ceil(Y_/(float)this->numBanks)){
+            int start = (num_tile+1)*this->numBanks;
+            int end = std::min<int>(start+this->numBanks, Y_);
+            int num = end-start;
+            // 调用转换函数
+            n_cycles_im2col = im2col_HCW_bank(start, num, layer_parameters);
+            // std::cout<<"Sort next input_arranged : "<<n_cycles_im2col<<std::endl;
+        } else {
+            n_cycles_im2col = 0;
+            // std::cout<<"Sort next input_arranged : "<<n_cycles_im2col<<std::endl;
+        }
+
+        int start_current = num_tile*this->numBanks;
+        int end_current = std::min<int>(start_current+this->numBanks, Y_);
+        int num_current = end_current-start_current;
+
+        // // 打印im2col排序后的数据
+        // std::cout<<"below is this->ppbuf_input_arranged->current_buffer data : "<<std::endl;
+        // for(int p=0; p<num_current; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         if(q>0 && q%(C*S)==0){
+        //             std::cout<<"  ";
+        //         }
+        //         std::cout<<this->ppbuf_input_arranged->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
+
+        // std::cout<<"below is this->ppbuf_weight->current_buffer data : "<<std::endl;
+        // for(int p=0; p<cols; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_weight->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
+
+        // 调用脉动阵列，下面的计算过程和对下一个tile的数据进行排序是并行的
+        matrixMultiply_new(num_current, this->bankSize, cols, this->ppbuf_input_arranged->current_buffer, this->ppbuf_weight->current_buffer, this->output_regfile_conv_cpu, this->neuron_state_regfile_conv_cpu, this->stonne_cfg.V_th, num_tile, this->stonne_cfg.m_MSNetworkCfg.ms_rows);
+        
+        stonne_instance->loadDenseGEMM(this->layer_name, cols, this->bankSize, num_current, this->ppbuf_input_arranged->current_buffer, this->ppbuf_weight->current_buffer, this->output_regfile_conv, this->neuron_state_regfile_conv, CNN_DATAFLOW);
+        stonne_instance->loadGEMMTile(cols,1,num_current);
+        //std::cout<<"begin run"<<std::endl;
+        stonne_instance->mem->reset(); // 重置信号
+        stonne_instance->asnet->resetSignals();
+        stonne_instance->n_cycles = 0;
+        stonne_instance->run();
+        int n_cycles_compute = stonne_instance->n_cycles;  // 计算所需时间
+        //std::cout<<"compute the tile need cycles : "<<n_cycles_compute<<std::endl;
+        local_cycles += std::max(n_cycles_im2col, n_cycles_compute);
+        // std::cout<<"current local_cycles is : "<<local_cycles<<std::endl;
+        PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+
+        // 对当前tile计算结果进行验证
+        for(int m = 0; m<Y_ * cols; m++){
+            float difference = fabs(this->output_regfile_conv[m]-this->output_regfile_conv_cpu[m]) + fabs(this->neuron_state_regfile_conv[m]-this->neuron_state_regfile_conv_cpu[m]);
+            if(difference>0){
+                std::cout << "ERROR position " << m <<  ": Value ofmap simulator: " << this->output_regfile_conv[m] << ". Value ofmap CPU: " << this->output_regfile_conv_cpu[m] << std::endl;
+                std::cout << "ERROR position " << m <<  ": Value neuron_state simulator: " << this->neuron_state_regfile_conv[m] << ". Value neuron_state CPU: " << this->neuron_state_regfile_conv_cpu[m] << std::endl;
+                std::cout << "\033[1;31mT test not passed\033[0m" << std::endl;
+                assert(false);
+            }
+        }
+    }
+
+    // 遍历每一列，将寄存器文件中的内容进行转置存储在输出buffer中
+    for(int p=0; p<cols; p++){
+        std::vector<int> packed_col_output(Y_,0);
+        std::vector<int> packed_col_neuron_state(Y_,0);
+        for(int q=0; q<Y_; q++){
+            packed_col_output[q] = this->output_regfile_conv[q*cols+p];
+            packed_col_neuron_state[q] = this->neuron_state_regfile_conv[q*cols+p];
+        }
+        local_cycles++; // 假设打包需要一个周期
+
+        // 将打包后的数据写入片上buffer
+        for(int q=0; q<Y_; q++){
+            this->output_buffer[p*Y_ + q] = packed_col_output[q];
+            this->neuron_state_buffer[p*Y_ + q] = packed_col_neuron_state[q];
+        }
+    }
+
+    // 该输入循环处理完成之后，将input bank的数据向前移动
+    for(int num=0; num<C*Y_padded; num++){
+        this->input_base_bank_0[num] = this->input_base_bank_1[num];
+        this->input_base_bank_1[num] = this->ppbuf_bank->current_buffer[num];
+    }
+
+    delete stonne_instance;
+    delete this->ppbuf_input_arranged;
+    delete[] this->input_arranged_buffer_0;
+    delete[] this->input_arranged_buffer_1;
+
+    delete[] this->output_regfile_conv;
+    delete[] this->output_regfile_conv_cpu;
+    delete[] this->neuron_state_regfile_conv;
+    delete[] this->neuron_state_regfile_conv_cpu;
+
+    return local_cycles;
+}
+
+
+int Controller::process_conv_and_pooling_CHW(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters){
     // std::cout<<"call process_conv_and_pooling"<<std::endl;
     // count_rows : 用于累积输出到片上SRAM的计数器
     int local_cycles = 0;
@@ -2083,10 +2441,10 @@ int Controller::process_conv_and_pooling(int layer_id, int i, int j, int cols, i
     return local_cycles;
 }
 
-// 通道后置
-// 不需要对neuron state数据进行累积
 int Controller::process_conv_and_pooling_HWC(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters){
-    std::cout<<"call process_conv_and_pooling_HWC"<<std::endl;
+    // 通道后置
+    // 不需要对neuron state数据进行累积
+    // std::cout<<"call process_conv_and_pooling_HWC"<<std::endl;
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -2242,7 +2600,7 @@ int Controller::process_conv_and_pooling_HWC(int layer_id, int i, int j, int col
 }
 
 int Controller::process_conv_and_pooling_HCW(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters){
-    std::cout<<"call process_conv_and_pooling_HCW"<<std::endl;
+    // std::cout<<"call process_conv_and_pooling_HCW"<<std::endl;
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -2398,8 +2756,177 @@ int Controller::process_conv_and_pooling_HCW(int layer_id, int i, int j, int col
     return local_cycles;
 }
 
-// 执行池化，并将池化结果累积到输出buffer中
-int Controller::process_pooling(int i, int j, int cols, layer_topology layer_parameters){
+int Controller::process_conv_and_pooling_HCW_bank(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters){
+    // std::cout<<"call process_conv_and_pooling_HCW_bank"<<std::endl;
+    int local_cycles = 0;
+
+    int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
+    int Y_ = (layer_parameters.Y - layer_parameters.S + 2*layer_parameters.P)/layer_parameters.stride + 1;
+    int R = layer_parameters.R;
+    int S = layer_parameters.S;
+    int C = layer_parameters.C;
+    int X = layer_parameters.X;
+    int Y = layer_parameters.Y;
+    int P = layer_parameters.P;
+    int Y_padded = Y + 2*P;
+
+    // std::cout<<"below is input_buffer data : "<<std::endl;
+
+    // for(int channels=0; channels<C; channels++){
+    //     //std::cout<<"debug"<<std::endl;
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     //std::cout<<"bank1:"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         //std::cout<<"num : "<<num<<std::endl;
+    //         std::cout<<this->input_base_bank_0[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    //     //std::cout<<"bank2"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         std::cout<<this->input_base_bank_1[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    //     //std::cout<<"bank3"<<std::endl;
+    //     for(int num=0; num<Y_padded; num++){
+    //         std::cout<<this->ppbuf_bank->current_buffer[channels*Y_padded + num]<<"  ";
+    //     }
+    //     std::cout<<std::endl;
+    // }
+    // std::cout<<std::endl;
+
+    this->bankSize = R*S*C;
+    this->numBanks = this->stonne_cfg.m_MSNetworkCfg.ms_rows;
+    this->im2col_bank.assign(this->bankSize,0); // 初始化，确定大小
+
+    // 排序buffer设置为双buffer
+    int input_arranged_buffer_size = this->bankSize*this->stonne_cfg.m_MSNetworkCfg.ms_rows;
+    this->ppbuf_input_arranged = new PingPong_Buffer;
+    this->input_arranged_buffer_0 = new int[input_arranged_buffer_size];
+    this->input_arranged_buffer_1 = new int[input_arranged_buffer_size];
+    PingPongBuffer_Init(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+
+    // 例化脉动阵列组件，执行矩阵乘法
+    Stonne* stonne_instance = new Stonne(this->stonne_cfg);
+    // 输出数据需要进一步累积进行池化
+    // 神经元状态数据在一行卷积计算完成之后，直接写入DRAM
+    this->output_regfile_conv = new int[Y_*cols]();
+    this->output_regfile_conv_cpu = new int[Y_*cols]();
+    this->neuron_state_regfile_conv = new int[Y_*cols]();
+    this->neuron_state_regfile_conv_cpu = new int[Y_*cols]();
+
+    // 第一次排序
+    int num;
+    if(Y_ >= this->numBanks){
+        num = this->numBanks;
+    } else {
+        num = Y_;
+    }
+
+    int n_cycles_im2col_first = im2col_HCW_bank(0,num,layer_parameters);
+    local_cycles += n_cycles_im2col_first;
+    PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+
+    for(int num_tile=0; num_tile<std::ceil(Y_/(float)this->numBanks); num_tile++){
+        int n_cycles_im2col_next;
+        if(num_tile+1 < std::ceil(Y_/(float)this->numBanks)){
+            int start = (num_tile+1)*this->numBanks;
+            int end = std::min<int>(start+this->numBanks, Y_);
+            int num = end-start;
+            // 调用转换函数
+            n_cycles_im2col_next = im2col_HCW_bank(start, num, layer_parameters);
+            // std::cout<<"Sort next input_arranged : "<<n_cycles_im2col_next<<std::endl;
+        } else {
+            n_cycles_im2col_next = 0;
+            // std::cout<<"Sort next input_arranged : "<<n_cycles_im2col_next<<std::endl;
+        }
+
+        int start_current = num_tile*this->numBanks;
+        int end_current = std::min<int>(start_current+this->numBanks, Y_);
+        int num_current = end_current - start_current;
+
+        // std::cout<<"below is this->ppbuf_input_arranged->current_buffer data : "<<std::endl;
+        // for(int p=0; p<num_current; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_input_arranged->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
+
+        // std::cout<<"below is this->ppbuf_weight->current_buffer data : "<<std::endl;
+        // for(int p=0; p<cols; p++){
+        //     for(int q=0; q<this->bankSize; q++){
+        //         std::cout<<this->ppbuf_weight->current_buffer[p*this->bankSize + q]<<"  ";
+        //     }
+        //     std::cout<<std::endl;
+        // }
+        // std::cout<<std::endl;
+
+        matrixMultiply_new(num_current, this->bankSize, cols, this->ppbuf_input_arranged->current_buffer, this->ppbuf_weight->current_buffer, this->output_regfile_conv_cpu, this->neuron_state_regfile_conv_cpu, this->stonne_cfg.V_th, num_tile, this->stonne_cfg.m_MSNetworkCfg.ms_rows);
+        stonne_instance->loadDenseGEMM(this->layer_name, cols, this->bankSize, num_current, this->ppbuf_input_arranged->current_buffer, this->ppbuf_weight->current_buffer, this->output_regfile_conv, this->neuron_state_regfile_conv, CNN_DATAFLOW);
+        stonne_instance->loadGEMMTile(cols,1,num_current);
+        stonne_instance->mem->reset(); // 重置信号
+        stonne_instance->asnet->resetSignals();
+        stonne_instance->n_cycles = 0;
+        stonne_instance->run();
+
+        int n_cycles_compute = stonne_instance->n_cycles;
+        local_cycles += std::max(n_cycles_im2col_next, n_cycles_compute);
+        PingPongBuffer_Switch(this->ppbuf_input_arranged, this->input_arranged_buffer_0, this->input_arranged_buffer_1);
+
+        // 对当前tile计算结果进行验证
+        for(int m = 0; m<Y_ * cols; m++){
+            float difference = fabs(this->output_regfile_conv[m]-this->output_regfile_conv_cpu[m]) + fabs(this->neuron_state_regfile_conv[m]-this->neuron_state_regfile_conv_cpu[m]);
+            if(difference>0){
+                std::cout << "ERROR position " << m <<  ": Value ofmap simulator: " << this->output_regfile_conv[m] << ". Value ofmap CPU: " << this->output_regfile_conv_cpu[m] << std::endl;
+                std::cout << "ERROR position " << m <<  ": Value neuron_state simulator: " << this->neuron_state_regfile_conv[m] << ". Value neuron_state CPU: " << this->neuron_state_regfile_conv_cpu[m] << std::endl;
+                std::cout << "\033[1;31mT test not passed\033[0m" << std::endl;
+                assert(false);
+            }
+        }
+    }
+
+    // 对输出数据和神经元状态数据分别处理
+    // 1. 神经元状态数据转置存入片上buffer
+    // 2. 输出累积到片上SRAM，进一步进行池化
+    for(int p=0; p<cols; p++){
+        std::vector<int> packed_col_output(Y_,0);
+        std::vector<int> packed_col_neuron_state(Y_,0);
+        for(int q=0; q<Y_; q++){
+            packed_col_output[q] = this->output_regfile_conv[q*cols+p];
+            packed_col_neuron_state[q] = this->neuron_state_regfile_conv[q*cols+p];
+        }
+        local_cycles++; // 假设打包需要一个周期
+
+        // 将打包后的数据写入片上buffer
+        for(int q=0; q<Y_; q++){
+            this->neuron_state_buffer[p*Y_ + q] = packed_col_neuron_state[q];
+            this->on_chip_sram[p*2*Y_ + count_rows*Y_ + q] = packed_col_output[q];
+        }
+    }
+
+    // 该输入循环处理完成之后，将input bank的数据向前移动
+    for(int num=0; num<C*Y_padded; num++){
+        this->input_base_bank_0[num] = this->input_base_bank_1[num];
+        this->input_base_bank_1[num] = this->ppbuf_bank->current_buffer[num];
+    }
+
+    delete stonne_instance;
+    delete[] this->output_regfile_conv;
+    delete[] this->output_regfile_conv_cpu;
+    delete[] this->neuron_state_regfile_conv;
+    delete[] this->neuron_state_regfile_conv_cpu;
+
+    delete this->ppbuf_input_arranged;
+    delete[] this->input_arranged_buffer_0;
+    delete[] this->input_arranged_buffer_1;
+
+    return local_cycles;
+}
+
+
+int Controller::process_pooling_CHW(int i, int j, int cols, layer_topology layer_parameters){
+    // 执行池化，并将池化结果累积到输出buffer中
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -2438,9 +2965,9 @@ int Controller::process_pooling(int i, int j, int cols, layer_topology layer_par
     return local_cycles;
 }
 
-// 通道后置
-// 将池化的结果转置为通道后置的形式，以便将数据写入DRAM
 int Controller::process_pooling_HWC(int i, int j, int cols, layer_topology layer_parameters){
+    // 通道后置
+    // 将池化的结果转置为通道后置的形式，以便将数据写入DRAM
     int local_cycles = 0;
 
     int X_ = (layer_parameters.X - layer_parameters.R + 2*layer_parameters.P)/layer_parameters.stride + 1;
@@ -2486,7 +3013,6 @@ int Controller::process_pooling_HWC(int i, int j, int cols, layer_topology layer
     return local_cycles;
 }
 
-
 int Controller::process_pooling_HCW(int i, int j, int cols, layer_topology layer_parameters){
     int local_cycles = 0;
 
@@ -2517,15 +3043,16 @@ int Controller::process_pooling_HCW(int i, int j, int cols, layer_topology layer
     return local_cycles;
 }
 
-// 初始化乒乓buffer
+
 void Controller::PingPongBuffer_Init(PingPong_Buffer* ppbuf, int* buffer_0, int* buffer_1){
+    // 初始化乒乓buffer
     ppbuf->current_buffer = buffer_1;
     ppbuf->next_buffer = buffer_0;
     ppbuf->buffer_toggle = true;
 }
 
-// 乒乓buffer切换
 void Controller::PingPongBuffer_Switch(PingPong_Buffer* ppbuf, int* buffer_0, int* buffer_1){
+    // 乒乓buffer切换
     ppbuf->buffer_toggle = !ppbuf->buffer_toggle;
     if(ppbuf->buffer_toggle) {
         ppbuf->current_buffer = buffer_1;
@@ -2548,16 +3075,19 @@ void Controller::write_callback(uint64_t addr){
     completed_writes++;
 } 
 
-// 输入和权重双buffer，模块化，input_buffer容量有限
-std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters) {
-    // 全连接层控制逻辑
-    // std::cout<<std::endl;
-    // std::cout<<"****************************************************************************************************************"<<std::endl;
-    // std::cout<<"                                                 Call runFC_2 function                                          "<<std::endl;
-    // std::cout<<"****************************************************************************************************************"<<std::endl;
-    // std::cout<<std::endl;
 
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+std::tuple<int*, int*, int*, int*> Controller::runFC(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters) {
+    // 全连接层控制逻辑
+    std::cout<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<"                                  Call runFC function                                    "<<std::endl;
+    std::cout<<"                                  Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<std::endl;
+
+    // 输入和权重双buffer，模块化，input_buffer容量有限
+
+    // std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_fc++;
     this->layer_name = "fc"+std::to_string(this->n_fc);
 
@@ -2568,7 +3098,7 @@ std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap,
     // 建模存储真实的数据
     int ifmap_size = input_layer;
     int filter_size = output_layer * input_layer;
-    std::cout<<"filter_size : "<<filter_size<<std::endl;
+    // std::cout<<"filter_size : "<<filter_size<<std::endl;
 
     int ofmap_size = output_layer;
     int nfmap_size = output_layer;
@@ -2648,20 +3178,19 @@ std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap,
     int num_input_data_first = std::min<int>(this->num_input, input_layer);
     int n_cycles_load_first_input = load_input_data_fc(ifmap, this->dram_instance, num_input_obtained, num_input_data_first);
     num_input_obtained += num_input_data_first;
-    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<std::endl;
     this->n_cycles += n_cycles_load_first_input;
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);  // 切换缓冲区
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 第一次取权重数据
     int n_cycles_load_first_weight = load_weight_data_fc(filter, this->dram_instance, 0, layer_parameters);
-    std::cout<<"load the first weight need cycles : "<<n_cycles_load_first_weight<<std::endl;
     this->n_cycles += n_cycles_load_first_weight;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);  // 切换缓冲区
+    std::cout<<"load the first weight need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     int num_output_obtained = 0;  // 计算得到的输出个数
     int num_output_write_once = 0;
     for(int i=0; i<num_weight_buffer_fold; i++){
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         std::cout<<"=============================================== weight loop ===================================================== "<<i<<"/"<<num_weight_buffer_fold-1<<std::endl;
 
         int start_row = i*this->stonne_cfg.m_MSNetworkCfg.ms_rows;
@@ -2671,7 +3200,7 @@ std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap,
         // 取下一块权重数据
         int n_cycles_load_next_weight;
         if(i+1 < num_weight_buffer_fold){
-            std::cout<<"*******************************"<<std::endl;
+            //std::cout<<"*******************************"<<std::endl;
             n_cycles_load_next_weight = load_weight_data_fc(filter, this->dram_instance, i+1, layer_parameters);
             std::cout<<"load the next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
         } else {
@@ -2685,29 +3214,39 @@ std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap,
         std::cout<<"process_fc need cycles : "<<n_cycles_process_fc<<std::endl;
         this->n_cycles += std::max(n_cycles_load_next_weight, n_cycles_process_fc);
         PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
+        std::cout<<"The current weight loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+        std::cout<<std::endl;
 
         int n_cycles_write_result;
         if(num_output_write_once >= num_output_buffer_need){  // 累积够
             n_cycles_write_result = store_output_and_neuronstate_data_fc(ofmap, nfmap, dram_instance, num_output_obtained, num_output_write_once, layer_parameters);
             num_output_obtained += num_output_write_once;
-            std::cout<<"n_cycles_write_result : "<<n_cycles_write_result<<std::endl;
+            // std::cout<<"n_cycles_write_result : "<<n_cycles_write_result<<std::endl;
+            std::cout<<"write all result need cycles : "<<n_cycles_write_result<<std::endl;
             num_output_write_once = 0;
 
             if(i == num_weight_buffer_fold-1){
                 this->n_cycles += n_cycles_write_result;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
             }
         } else {
             n_cycles_write_result = 0;
-            std::cout<<"n_cycles_write_result : "<<n_cycles_write_result<<std::endl;
+            // std::cout<<"n_cycles_write_result : "<<n_cycles_write_result<<std::endl;
+            // std::cout<<"write all result need cycles : "<<n_cycles_write_result<<std::endl;
+            std::cout<<"The output has not accumulated enough and will not be entered into DRAM"<<std::endl;
         }
         
         if((i == num_weight_buffer_fold-1) && (num_output_write_once != 0)){
             n_cycles_write_result = store_output_and_neuronstate_data_fc(ofmap, nfmap, dram_instance, num_output_obtained, num_output_write_once, layer_parameters);
             num_output_obtained += num_output_write_once;
-            std::cout<<"n_cycles_write_result : "<<n_cycles_write_result<<std::endl;
+            // std::cout<<"n_cycles_write_result : "<<n_cycles_write_result<<std::endl;
+            std::cout<<"write all result need cycles : "<<n_cycles_write_result<<std::endl;
             this->n_cycles += n_cycles_write_result;
+            std::cout<<"All calculation ends, and write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
             num_output_write_once = 0;
-        }
+        } 
 
     }
 
@@ -2723,9 +3262,11 @@ std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap,
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
-
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
 
     delete dram_instance;
     delete[] this->output_buffer;
@@ -2747,19 +3288,18 @@ std::tuple<int*, int*, int*, int*> Controller::runFC_2(int layer_id, int* ifmap,
     return {ifmap, filter, ofmap, nfmap};
 }
 
-// input_arranged_buffer 和 weight_buffer 和 input_buffer都设置为双buffer，
-// weight_buffer 取下一次计算所需数据的时间是：input_buffer第二次取数据之后（较简单的控制逻辑）
-// 根据输出buffer的大小写输出
-std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters){
+
+std::tuple<int*, int*, int*, int*> Controller::runConv_CHW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters){
     std::cout<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
-    std::cout<<"                                   Call runConv_DataFlow_3 function                                             "<<std::endl;
+    std::cout<<"                                     Call runConv_CHW function                                             "<<std::endl;
+    std::cout<<"                                     Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<std::endl;
 
     // 卷积层的控制逻辑
     // 考虑是否池化，这里只支持池化为0、1、2，步长为1的卷积
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    //std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_conv++;
     this->layer_name = "conv"+std::to_string(this->n_conv);
 
@@ -2861,10 +3401,10 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
         num_weight_data = R * S * C * K;
     }
     int n_cycles_load_first_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
-    std::cout<<"load the first weights cycles : "<<n_cycles_load_first_weight<<std::endl;
     this->n_cycles += n_cycles_load_first_weight;
     num_weight_obtained += num_weight_data;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);  // 交换缓冲区
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 2. input buffer
     int num_input_buffer_need = R * Y_padded * C;  // 加padding
@@ -2880,7 +3420,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
     // 切换，切换之后，上一步加载的数据到了current_buffer，用于下面的计算，next_buffer是空的，用于加载下一块数据（和计算同时进行）
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
     this->n_cycles += n_cycles_load_first_input;
-    std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<std::endl;
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 3. output buffer
     int num_output_buffer_need = X_*Y_ * std::min<int>(this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);  // 卷积的输出
@@ -2908,23 +3448,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
         int start_col = i*this->stonne_cfg.m_MSNetworkCfg.ms_cols;
         int end_col = std::min<int>(start_col+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
         int cols = end_col - start_col;
-
-        // unsigned int num_output_buffer_need = Y_ * cols;
-        // unsigned int num_neuron_state_buffer_need = Y_ * cols;
-        // assert(num_output_buffer_need <= num_output);
-        // assert(num_neuron_state_buffer_need <= num_neuron_state_buffer_need);
-        // this->output_buffer = new int[num_output_buffer_need]();
-        // this->neuron_state_buffer = new int[num_neuron_state_buffer_need]();
         
-        // // 第一次加载input data
-        // // 加载数据到用于计算的buffer，加载到next_buffer
-        // int n_cycles_load_first_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, 0, layer_parameters);
-        // // 切换，切换之后，上一步加载的数据到了current_buffer，用于下面的计算，next_buffer是空的，用于加载下一块数据（和计算同时进行）
-        // PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
-        // this->n_cycles += n_cycles_load_first_input;
-        // std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<std::endl;
-        
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         for(int j=0; j<X_; j++){ 
             std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
             
@@ -2933,23 +3457,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
             int n_cycles_load_next_input;
             if((j+1)<X_ || (i+1)<num_weight_buffer_fold) {
                 n_cycles_load_next_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, (j+1)%X_, layer_parameters);  
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             } else {
                 n_cycles_load_next_input = 0;
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             }
-
-            // // 加载下一块数据到next_buffer中
-            // int n_cycles_load_next_input;
-            // if(j+1<X_){
-            //     //std::cout<<" below load next input cycles"<<std::endl;
-            //     n_cycles_load_next_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, j+1, layer_parameters);  // 调用函数**************************
-            //     //this->n_cycles += n_cycles_load_input;
-            //     std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
-            // } else {
-            //     n_cycles_load_next_input = 0;
-            //     std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
-            // }
 
             // 在第二次从DRAM中取输入数据之后，与计算同时进行加载下一块权重数据
             int n_cycles_load_next_weight;
@@ -2959,36 +3471,21 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
                 int cols_next = end_col_next - start_col_next;
                 num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
                 n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
                 num_weight_obtained += num_weight_data;
             } else {
                 n_cycles_load_next_weight = 0;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             }
             
-            // input数据重排和调用脉动阵列进行计算，在该函数内，将计算的结果累积到output buffer中
-            int n_cycles_process = process_conv_3(layer_id, i, j, cols, layer_parameters);
+            // *** input数据重排和调用脉动阵列进行计算，在该函数内，将计算的结果累积到output buffer中
+            int n_cycles_process = process_conv_CHW(layer_id, i, j, cols, layer_parameters);
             //this->n_cycles += n_cycles_process;
-            std::cout<<"process_conv cycles : "<<n_cycles_process<<std::endl;
-
-            // // 将计算结果写入DRAM
-            // int n_cycles_write = store_output_and_neuronstate_data(ofmap, nfmap, this->dram_instance, i, j, cols, layer_parameters);
-            // //this->n_cycles += n_cycles_write;
-            // //std::cout<<"write result cycles : "<<n_cycles_write<<std::endl;
-            // //std::cout<<"process_conv and write result cycles : "<<(n_cycles_process+n_cycles_write)<<std::endl;
-
-
-            // if(i==num_weight_buffer_fold-1 && j==X_-1){
-            //     this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_write);
-            //     // std::cout<<std::endl;
-            //     //std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
-            // } else {
-            //     this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process);
-            //     std::cout<<std::endl;
-            //     //std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
-            // }
+            std::cout<<"process_conv need cycles : "<<n_cycles_process<<std::endl;
 
             this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process);
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            //std::cout<<std::endl;
 
             // input双缓冲区切换
             PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
@@ -2998,17 +3495,19 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
         PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1); // 切换缓冲区
 
         // 将当前权重循环得到的输出结果写入DRAM
-        int n_cycles_write_neuron_state = store_neuron_state(nfmap, dram_instance, i, cols, layer_parameters);
-        int n_cycles_write_output = store_conv_output(ofmap, dram_instance, i, cols, layer_parameters);
-        std::cout<<"write neuron state result cycles : "<<n_cycles_write_neuron_state<<std::endl;
-        std::cout<<"write output result cycles : "<<n_cycles_write_output<<std::endl;
-
-        // int n_cycles_write = store_output_and_neuronstate_data(ofmap, nfmap, dram_instance, i, cols, layer_parameters);
-        // std::cout<<"write result cycles : "<<n_cycles_write<<std::endl;
+        int n_cycles_write_neuron_state = store_neuron_state_CHW(nfmap, dram_instance, i, cols, layer_parameters);
+        int n_cycles_write_output = store_conv_output_CHW(ofmap, dram_instance, i, cols, layer_parameters);
+        std::cout<<std::endl;
+        std::cout<<"write neuron state result need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+        std::cout<<"write output result need cycles : "<<n_cycles_write_output<<std::endl;
+        std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
 
         if(i == num_weight_buffer_fold-1){
             this->n_cycles += n_cycles_write_output;
             this->n_cycles += n_cycles_write_neuron_state;
+            std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+        } else {
+            std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
         }
     }
 
@@ -3035,9 +3534,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
-
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
     // std::cout<<std::endl;
     // std::cout<<"The conv compute output result is : "<<std::endl;
     // for(int k=0; k<K; k++){
@@ -3072,17 +3573,18 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_DataFlow_3(int layer_id, 
     return {ifmap, filter, ofmap, nfmap};
 }
 
-// 通道后置
-// 从DRAM中读取输入数据是连续的
-// 将输出数据写入DRAM时，非常不连续
 std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters) {
+    // 通道后置
+    // 从DRAM中读取输入数据是连续的
+    // 将输出数据写入DRAM时，非常不连续
     std::cout<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
-    std::cout<<"                                          Call runConv_HWC function                                             "<<std::endl;
+    std::cout<<"                                     Call runConv_HWC function                                             "<<std::endl;
+    std::cout<<"                                     Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<std::endl;
 
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    // std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_conv++;
     this->layer_name = "conv"+std::to_string(this->n_conv);
 
@@ -3183,10 +3685,10 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
         num_weight_data = R * S * C * K;
     }
     int n_cycles_load_first_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
-    std::cout<<"load the first weights cycles : "<<n_cycles_load_first_weight<<std::endl;
     this->n_cycles += n_cycles_load_first_weight;
     num_weight_obtained += num_weight_data;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);  // 交换缓冲区
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 2. input buffer
     int num_input_buffer_need = R * Y_padded * C;  // 加padding
@@ -3202,7 +3704,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
     // 切换，切换之后，上一步加载的数据到了current_buffer，用于下面的计算，next_buffer是空的，用于加载下一块数据（和计算同时进行）
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
     this->n_cycles += n_cycles_load_first_input;
-    std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<std::endl;
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 3. output buffer
     // 注意output buffer的大小，这和通道后置存储方式相关
@@ -3225,7 +3727,6 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
         int end_col = std::min<int>(start_col+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
         int cols = end_col - start_col;  
 
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         for(int j=0; j<X_; j++){
             std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
             
@@ -3234,10 +3735,10 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
             int n_cycles_load_next_input;
             if((j+1)<X_ || (i+1)<num_weight_buffer_fold) {
                 n_cycles_load_next_input = load_input_data_HWC(layer_id, ifmap, this->dram_instance, (j+1)%X_, layer_parameters);  
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             } else {
                 n_cycles_load_next_input = 0;
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             }
 
             // 在第二次从DRAM中取输入数据之后，与计算同时进行加载下一块权重数据
@@ -3248,34 +3749,36 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
                 int cols_next = end_col_next - start_col_next;
                 num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
                 n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
                 num_weight_obtained += num_weight_data;
             } else {
                 n_cycles_load_next_weight = 0;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             }
 
             // input数据重排和调用脉动阵列进行计算，在该函数内，将计算的结果累积到output buffer中
             int n_cycles_process = process_conv_HWC(layer_id, i, j, cols, layer_parameters);
             //this->n_cycles += n_cycles_process;
-            std::cout<<"process_conv cycles : "<<n_cycles_process<<std::endl;
+            std::cout<<"process_conv need cycles : "<<n_cycles_process<<std::endl;
 
             this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process);
-            std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            std::cout<<std::endl;
 
             // 将计算结果写入DRAM
             int n_cycles_write_output = store_conv_output_HWC(ofmap, this->dram_instance, i, j, cols, layer_parameters);
             int n_cycles_write_neuron_state = store_neuron_state_HWC(nfmap, dram_instance, i, j, cols, layer_parameters);
-            std::cout<<"write neuron state result cycles : "<<n_cycles_write_neuron_state<<std::endl;
-            std::cout<<"write output result cycles : "<<n_cycles_write_output<<std::endl;
-            std::cout<<"write result cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
+            std::cout<<"write neuron state result need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            std::cout<<"write output result need cycles : "<<n_cycles_write_output<<std::endl;
+            std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
 
             // 加上最后一次写数据所需的周期
             if(i==num_weight_buffer_fold-1 && j==X_-1){
-                std::cout<<"---- The last time write data into DRAM ------"<<std::endl;
                 this->n_cycles += n_cycles_write_output;
                 this->n_cycles += n_cycles_write_neuron_state;
-                std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
             }
 
             PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
@@ -3309,8 +3812,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
 
     this->records.clear();
     delete[] ofmap_cpu;
@@ -3319,19 +3825,20 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HWC(int layer_id, int* if
     return {ifmap, filter, ofmap, nfmap};
 }
 
-// HCW
-// 通道后置和通道前置的折中
-// 从DRAM中读取输入数据是连续的
-// 将输出数据写入DRAM时，不完全连续，但是相比通道前置可以减少写入次数
 std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters) {
+    // HCW
+    // 通道后置和通道前置的折中
+    // 从DRAM中读取输入数据是连续的
+    // 将输出数据写入DRAM时，不完全连续，但是相比通道前置可以减少写入次数
 
     std::cout<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
-    std::cout<<"                                          Call runConv_HCW function                                             "<<std::endl;
+    std::cout<<"                                     Call runConv_HCW function                                             "<<std::endl;
+    std::cout<<"                                     Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<std::endl;
 
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    // std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_conv++;
     this->layer_name = "conv"+std::to_string(this->n_conv);
 
@@ -3413,19 +3920,19 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
 
     // ------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-    std::cout<<"below is ifmap data : "<<std::endl;
-    for(int channels=0; channels<C; channels++){
-        std::cout<<"channels : "<<channels<<std::endl;
-        for(int p=0; p<X; p++){
-            for(int q=0; q<Y; q++){
-                // int index = p * Y * C + q * C + channels;  // HWC layout
-                int index = p * C * Y + channels * Y + q; // HCW layout
-                std::cout<<ifmap[index]<<"  ";
-            }
-            std::cout<<std::endl;
-        }
-        std::cout<<std::endl;
-    }
+    // std::cout<<"below is ifmap data : "<<std::endl;
+    // for(int channels=0; channels<C; channels++){
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     for(int p=0; p<X; p++){
+    //         for(int q=0; q<Y; q++){
+    //             // int index = p * Y * C + q * C + channels;  // HWC layout
+    //             int index = p * C * Y + channels * Y + q; // HCW layout
+    //             std::cout<<ifmap[index]<<"  ";
+    //         }
+    //         std::cout<<std::endl;
+    //     }
+    //     std::cout<<std::endl;
+    // }
 
     // 1. weight buffer
     int num_weight_buffer_need = R * S * C * this->stonne_cfg.m_MSNetworkCfg.ms_cols;
@@ -3447,10 +3954,10 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
         num_weight_data = R * S * C * K;
     }
     int n_cycles_load_first_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
-    std::cout<<"load the first weights cycles : "<<n_cycles_load_first_weight<<std::endl;
     this->n_cycles += n_cycles_load_first_weight;
     num_weight_obtained += num_weight_data;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);  // 交换缓冲区
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 2. input buffer
     int num_input_buffer_need = R * Y_padded * C;  // 加padding
@@ -3466,7 +3973,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
     // 切换，切换之后，上一步加载的数据到了current_buffer，用于下面的计算，next_buffer是空的，用于加载下一块数据（和计算同时进行）
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
     this->n_cycles += n_cycles_load_first_input;
-    std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<std::endl;
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 3. output buffer
     int num_output_buffer_need = Y_ * this->stonne_cfg.m_MSNetworkCfg.ms_cols;  // 卷积的输出
@@ -3488,7 +3995,6 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
         int end_col = std::min<int>(start_col+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
         int cols = end_col - start_col;  
 
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         for(int j=0; j<X_; j++){
             std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
             
@@ -3497,10 +4003,10 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
             int n_cycles_load_next_input;
             if((j+1)<X_ || (i+1)<num_weight_buffer_fold) {
                 n_cycles_load_next_input = load_input_data_HCW(layer_id, ifmap, this->dram_instance, (j+1)%X_, layer_parameters);  
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             } else {
                 n_cycles_load_next_input = 0;
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             }
 
             // 在第二次从DRAM中取输入数据之后，与计算同时进行加载下一块权重数据
@@ -3511,34 +4017,36 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
                 int cols_next = end_col_next - start_col_next;
                 num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
                 n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
                 num_weight_obtained += num_weight_data;
             } else {
                 n_cycles_load_next_weight = 0;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             }
 
             // 计算
             int n_cycles_process = process_conv_HCW(layer_id, i, j, cols, layer_parameters);
             //this->n_cycles += n_cycles_process;
-            std::cout<<"process_conv cycles : "<<n_cycles_process<<std::endl;
+            std::cout<<"process_conv need cycles : "<<n_cycles_process<<std::endl;
 
             this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process);
-            std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            std::cout<<std::endl;
 
             // 将计算结果写入DRAM
             int n_cycles_write_output = store_conv_output_HCW(ofmap, this->dram_instance, i, j, cols, layer_parameters);
             int n_cycles_write_neuron_state = store_neuron_state_HCW(nfmap, dram_instance, i, j, cols, layer_parameters);
-            std::cout<<"write neuron state result cycles : "<<n_cycles_write_neuron_state<<std::endl;
-            std::cout<<"write output result cycles : "<<n_cycles_write_output<<std::endl;
-            std::cout<<"write result cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
+            std::cout<<"write neuron state result need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            std::cout<<"write output result need cycles : "<<n_cycles_write_output<<std::endl;
+            std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
 
             // 加上最后一次写数据所需的周期
             if(i==num_weight_buffer_fold-1 && j==X_-1){
-                std::cout<<"---- The last time write data into DRAM ------"<<std::endl;
                 this->n_cycles += n_cycles_write_output;
                 this->n_cycles += n_cycles_write_neuron_state;
-                std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
             }
 
             PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
@@ -3571,8 +4079,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
 
     this->records.clear();
     delete[] ofmap_cpu;
@@ -3581,18 +4092,284 @@ std::tuple<int*, int*, int*, int*> Controller::runConv_HCW(int layer_id, int* if
     return {ifmap, filter, ofmap, nfmap};
 }
 
-// 三个双buffer，加padding操作在step1阶段实现
-std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters){
+std::tuple<int*, int*, int*, int*> Controller::runConv_HCW_bank(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters) {
+    std::cout<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<"                                     Call runConv_HCW_bank function                                             "<<std::endl;
+    std::cout<<"                                     Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<std::endl;
+
+    this->n_conv++;
+    this->layer_name = "conv"+std::to_string(this->n_conv);
+
+    // 提取层参数
+    int X = layer_parameters.X;
+    int Y = layer_parameters.Y;
+    int R = layer_parameters.R;
+    int S = layer_parameters.S;
+    int C = layer_parameters.C;
+    int K = layer_parameters.K; // 输出通道数
+    int P = layer_parameters.P; // 池化
+    int stride = layer_parameters.stride; // 步长
+
+    assert(R == 3); // 目前只支持卷积核大小为3*3的卷积层
+
+    int X_padded = X + 2*P;
+    int Y_padded = Y + 2*P;
+
+    // 计算输出特征图维度
+    int X_ = (X + 2*P - R)/stride + 1;
+    int Y_ = (Y + 2*P - S)/stride + 1;
+
+    // 建模存储真实的数据
+    int ifmap_size = X * Y * C;
+    int filter_size = R * S * C * K;
+    int ofmap_size = X_ * Y_ * K;   
+    int nfmap_size = X_ * Y_ * K;  
+
+    if(layer_id == 1){ // 对于第一个网络层，对输出数据进行随机初始化
+        ifmap = new int[ifmap_size];
+        for(int i=0; i<ifmap_size; i++){
+            ifmap[i] = rand()%2;
+        }
+    } else {
+        // 将输入数据和基地址和输出数据的基地址交换
+        uint64_t temp = this->input_offset;
+        this->input_offset = this->output_offset;
+        this->output_offset = temp;
+    }
+
+    filter = new int[filter_size];
+    ofmap = new int[ofmap_size]();
+    nfmap = new int[nfmap_size]();
+    int* ofmap_cpu = new int[ofmap_size]();
+    int* nfmap_cpu = new int[nfmap_size]();
+
+    for(int i=0; i<filter_size; i++){
+        filter[i] = rand()%((this->max_weight-this->min_weight+1)+this->min_weight);
+    }
+
+    // 例化DRAMsim，模拟从DRAM取数据到片上buffer的过程
+    this->dram_instance = new Dram(read_callback,write_callback);
+    this->dram_instance->set_read_request_fifo(this->read_request_fifo);
+    this->dram_instance->set_write_request_fifo(this->write_request_fifo);
+
+    // for(int i=0; i<X_; i++){
+    //     record r;
+    //     if(i>=0 && i<P){
+    //         r.start_rows = 0;
+    //         r.num_rows = R-(P-i);
+    //         r.add_0_above = P-i;
+    //         r.add_0_below = 0;
+    //     } else if(i>X_-1-P && i<=X_-1){
+    //         // std::cout<<"i : "<<i<<std::endl;
+    //         r.start_rows = i-P;
+    //         r.num_rows = R - (i-(X_-1-P));
+    //         r.add_0_above = 0;
+    //         r.add_0_below = (i-(X_-1-P));
+    //         // std::cout<<r.num_rows<<std::endl;
+    //         // std::cout<<r.start_rows<<std::endl;
+    //         // std::cout<<r.add_0_above<<std::endl;
+    //         // std::cout<<r.add_0_below<<std::endl;
+    //     } else {
+    //         r.start_rows = i-P;
+    //         r.num_rows = R;
+    //         r.add_0_above = 0;
+    //         r.add_0_below = 0;
+    //     }
+    //     this->records.push_back(r);
+    // }
+
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    // std::cout<<"below is ifmap data : "<<std::endl;
+    // for(int channels=0; channels<C; channels++){
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     for(int p=0; p<X; p++){
+    //         for(int q=0; q<Y; q++){
+    //             // int index = p * Y * C + q * C + channels;  // HWC layout
+    //             int index = p * C * Y + channels * Y + q; // HCW layout
+    //             std::cout<<ifmap[index]<<"  ";
+    //         }
+    //         std::cout<<std::endl;
+    //     }
+    //     std::cout<<std::endl;
+    // }
+
+    // 1. weight buffer
+    int num_weight_buffer_need = R * S * C * this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+    assert(num_weight_buffer_need <= this->num_weight);
+    this->ppbuf_weight = new PingPong_Buffer;
+    this->weight_buffer_0 = new int[num_weight_buffer_need];
+    this->weight_buffer_1 = new int[num_weight_buffer_need];
+    PingPongBuffer_Init(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
+
+    // 从DRAM中取数据需要的（计数器）
+    int num_weight_buffer_fold = std::ceil(K / (float)this->stonne_cfg.m_MSNetworkCfg.ms_cols); // 权重数据需要从DRAM中取出多少次，当输出通道数很大时，需要分时复用
+    // 下面开始从DRAM中取数据，记录已经从片外取出的数据个数，用于计算下次取数据的基地址
+    int num_weight_obtained = 0;
+    // 第一次从DRAM中加载权重数据，加载到next_buffer中
+    int num_weight_data; // 要从DRAM中取的权重个数
+    if(num_weight_buffer_fold>1){
+        num_weight_data = R * S * C * this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+    } else {
+        num_weight_data = R * S * C * K;
+    }
+    int n_cycles_load_first_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
+    this->n_cycles += n_cycles_load_first_weight;
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
+    num_weight_obtained += num_weight_data;
+    PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);  // 交换缓冲区
+
+    // 2. input buffer 
+    int num_input_bank_need = Y_padded*C;
+    assert(num_input_bank_need*(R+1) <= this->num_input);
+    this->input_base_bank_0 = new int[num_input_bank_need];
+    this->input_base_bank_1 = new int[num_input_bank_need];
+    this->ppbuf_bank = new PingPong_Buffer;
+    this->input_pp_bank_0 = new int[num_input_bank_need];
+    this->input_pp_bank_1 = new int[num_input_bank_need];
+    PingPongBuffer_Init(this->ppbuf_bank, this->input_pp_bank_0, this->input_pp_bank_1);
+
+    // 3. output buffer
+    int num_output_buffer_need = Y_ * this->stonne_cfg.m_MSNetworkCfg.ms_cols;  // 卷积的输出
+    assert(num_output_buffer_need <= this->num_output);
+    this->output_buffer = new int[num_output_buffer_need]();
+    // this->output_buffer_cpu = new int[num_output_buffer_need]();
+
+    // 4. neuron_state buffer
+    int num_neuron_state_buffer_need = Y_ * this->stonne_cfg.m_MSNetworkCfg.ms_cols; 
+    assert(num_neuron_state_buffer_need <= this->num_neuron_state);
+    this->neuron_state_buffer = new int[num_neuron_state_buffer_need]();
+    // this->neuron_state_buffer_cpu = new int[num_neuron_state_buffer_need]();
+
+    for(int i=0; i<num_weight_buffer_fold; i++){
+        std::cout<<"=============================================== weight loop ===================================================== "<<i<<"/"<<num_weight_buffer_fold-1<<std::endl;
+
+        // 权重数据是一个输出通道一个输出通道进行读取的
+        int start_col = i*this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+        int end_col = std::min<int>(start_col+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
+        int cols = end_col - start_col;  
+
+        // 第一次加载input data
+        int n_cycles_load_first_input = load_input_data_HCW_bank(layer_id, ifmap, dram_instance, 0, layer_parameters);
+        PingPongBuffer_Switch(this->ppbuf_bank, this->input_pp_bank_0, this->input_pp_bank_1);
+        this->n_cycles += n_cycles_load_first_input;
+        std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
+
+        for(int j=0; j<X_; j++){
+            std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
+            
+            // *** 加载下一块输入数据，与上一块数据的计算并行
+            int n_cycles_load_next_input;
+            if((j+1)<X_ ) {
+                n_cycles_load_next_input = load_input_data_HCW_bank(layer_id, ifmap, this->dram_instance, j+1, layer_parameters);  
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
+            } else {
+                n_cycles_load_next_input = 0;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
+            }
+
+            // *** 加载下一块权重数据，与当前权重循环的计算过程并行
+            int n_cycles_load_next_weight;
+            if(i+1<num_weight_buffer_fold && j==0){  // 取下一块权重
+                int start_col_next = (i+1)*this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+                int end_col_next = std::min<int>(start_col_next+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
+                int cols_next = end_col_next - start_col_next;
+                num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
+                n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
+                num_weight_obtained += num_weight_data;
+            } else {
+                n_cycles_load_next_weight = 0;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
+            }
+
+            /// *** 重排和计算
+            int n_cycles_process = process_conv_HCW_bank(layer_id, i, j, cols, layer_parameters);
+            //this->n_cycles += n_cycles_process;
+            std::cout<<"process_conv need cycles : "<<n_cycles_process<<std::endl;
+
+            this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process);
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            std::cout<<std::endl;
+
+            // *** 将计算结果写入DRAM
+            int n_cycles_write_output = store_conv_output_HCW(ofmap, this->dram_instance, i, j, cols, layer_parameters);
+            int n_cycles_write_neuron_state = store_neuron_state_HCW(nfmap, dram_instance, i, j, cols, layer_parameters);
+            std::cout<<"write neuron state result need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            std::cout<<"write output result need cycles : "<<n_cycles_write_output<<std::endl;
+            std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
+
+            // 加上最后一次写数据所需的周期
+            if(i==num_weight_buffer_fold-1 && j==X_-1){
+                // std::cout<<"---- The last time write data into DRAM ------"<<std::endl;
+                this->n_cycles += n_cycles_write_output;
+                this->n_cycles += n_cycles_write_neuron_state;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
+            }
+
+            PingPongBuffer_Switch(this->ppbuf_bank, this->input_pp_bank_0, this->input_pp_bank_1);
+        }
+        PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
+
+    }
+
+    delete this->ppbuf_weight;
+    delete[] this->weight_buffer_0;
+    delete[] this->weight_buffer_1;
+
+    delete this->ppbuf_bank;
+    delete[] this->input_base_bank_0;
+    delete[] this->input_base_bank_1;
+    delete[] this->input_pp_bank_0;
+    delete[] this->input_pp_bank_1;
+
+    delete[] this->output_buffer;
+    delete[] this->neuron_state_buffer;
+
+    // 所有tile计算完毕，验证写到DRAM中的结果是否正确
+    //std::cout<<"begin final test"<<std::endl;
+    conv_compute_HCW(R, S, C, K, P, stride, X, Y, ifmap, filter, ofmap_cpu, nfmap_cpu, this->stonne_cfg.V_th);
+
+    for(int i=0; i<X_*Y_*K; i++){
+        float difference = fabs(ofmap[i]-ofmap_cpu[i]) + fabs(nfmap[i]-nfmap_cpu[i]);
+        if(difference>0){
+            std::cout<<"ERROR position : "<<i<<"  value ofmap simlator : "<<ofmap[i]<<"  value ofmap cpu : "<<ofmap_cpu[i]<<std::endl;
+            std::cout<<"ERROR position : "<<i<<"  value nfmap simlator : "<<nfmap[i]<<"  value nfmap cpu : "<<nfmap_cpu[i]<<std::endl;
+            assert(false);
+        }
+    }
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+
+    // this->records.clear();
+    delete[] ofmap_cpu;
+    delete[] nfmap_cpu;
+
+    return {ifmap, filter, ofmap, nfmap};
+}
+
+
+std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_CHW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters){
     // 卷积层的控制逻辑
     // 考虑是否池化，这里只支持池化为0、1、2，步长为1的卷积
 
-    // std::cout<<std::endl;
-    // std::cout<<"****************************************************************************************************************"<<std::endl;
-    // std::cout<<"                                  Call runConvandPooling_DataFlow_2 function                                    "<<std::endl;
-    // std::cout<<"****************************************************************************************************************"<<std::endl;
-    // std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<"                                  Call runConvandPooling_CHW function                                    "<<std::endl;
+    std::cout<<"                                  Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<std::endl;
 
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    //std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_conv++;
     this->layer_name = "conv"+std::to_string(this->n_conv);
 
@@ -3692,7 +4469,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
     num_weight_obtained += num_weight_data;
     this->n_cycles += n_cycles_load_first_weight;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
-    std::cout<<"load the first weights cycles : "<<n_cycles_load_first_weight<<"          and current cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
     
     // 2. input buffer
     int num_input_buffer_need = R * Y_padded * C;
@@ -3705,7 +4482,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
     // 第一次加载输入数据到片上buffer
     int n_cycles_load_first_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, 0, layer_parameters);
     this->n_cycles += n_cycles_load_first_input;
-    std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<"          and current cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
 
     // 3. output buffer
@@ -3721,12 +4498,6 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
     for(int i=0; i<num_weight_buffer_fold; i++){  // 取权重循环，每次循环都要取全部的输入数据
         std::cout<<"=============================================== weight loop ===================================================== "<<i<<"/"<<num_weight_buffer_fold-1<<std::endl;
 
-        // // 第一次加载输入数据到片上buffer
-        // int n_cycles_load_first_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, 0, layer_parameters);
-        // this->n_cycles += n_cycles_load_first_input;
-        // std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<"          and current cycles is : "<<this->n_cycles<<std::endl;
-        // PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
-
         // 权重数据是一个输出通道一个输出通道进行读取的
         int start_col = i*this->stonne_cfg.m_MSNetworkCfg.ms_cols;
         int end_col = std::min<int>(start_col+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
@@ -3736,31 +4507,19 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
         int sram_size = 2 * Y_ * cols; 
         this->on_chip_sram = new int[sram_size]();
 
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         int count_rows = 0; // 用于累加卷积的输出到片上SRAM计数
         for(int j=0; j<X_; j++){
             std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
-            std::cout<<"current input loop begin cycles : "<<this->n_cycles<<"          and current cycles is : "<<this->n_cycles<<std::endl;
 
             // *** 加载下一块输入数据，与上一块数据的计算并行
             int n_cycles_load_next_input;
             if((j+1)<X_ || (i+1)<num_weight_buffer_fold) {
                 n_cycles_load_next_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, (j+1)%X_, layer_parameters);
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             } else {
                 n_cycles_load_next_input = 0;
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             }
-
-            // // *** 加载下一块输入数据，与上一块数据的计算并行
-            // int n_cycles_load_next_input;
-            // if(j+1<X_){
-            //     n_cycles_load_next_input = load_input_data_CHW(layer_id, ifmap, this->dram_instance, j+1, layer_parameters);
-            //     std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
-            // } else {
-            //     n_cycles_load_next_input = 0;
-            //     std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
-            // }
 
             // *** 加载下一块权重数据，与当前权重循环的计算过程并行
             int n_cycles_load_next_weight;
@@ -3771,67 +4530,31 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
                 num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
                 n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
                 num_weight_obtained += num_weight_data;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             } else {
                 n_cycles_load_next_weight = 0;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             }
 
             // *** 重排和计算，将neuron state写入片上buffer，将output累积到片上sram
-            int n_cycles_process = process_conv_and_pooling(layer_id, i, j, cols, count_rows, layer_parameters);
+            int n_cycles_process = process_conv_and_pooling_CHW(layer_id, i, j, cols, count_rows, layer_parameters);
             count_rows++;
-            std::cout<<"process_conv_and_pooling cycles : "<<n_cycles_process<<std::endl;
-            //this->n_cycles += n_cycles_process;
-
-            // // *** 将计算结果写入DRAM
-            // // 1. 将神经元状态写入DRAM
-            // int n_cycles_write_neuron_state = store_neuron_state(nfmap, this->dram_instance, i, j, cols, layer_parameters);
-            // std::cout<<"write neuron_state cycles : "<<n_cycles_write_neuron_state<<std::endl;
-            // // this->n_cycles += n_cycles_write_neuron_state;
+            std::cout<<"process_conv_and_pooling need cycles : "<<n_cycles_process<<std::endl;
 
             //对累积的结果进行池化，将池化结果写入片上buffer
             int n_cycles_process_pooling;
             if(j>0 && j%2!=0){
-
-                //std::cout<<"need pooling "<<std::endl;
                 count_rows = 0;
                 // 调用池化模块
-                n_cycles_process_pooling = process_pooling(i, j, cols, layer_parameters);
-                std::cout<<"process_pooling cycles : "<<n_cycles_process_pooling<<std::endl;
-                //this->n_cycles += n_cycle_process_pooling;
+                n_cycles_process_pooling = process_pooling_CHW(i, j, cols, layer_parameters);
+                std::cout<<"process_pooling need cycles : "<<n_cycles_process_pooling<<std::endl;
 
-                // // 将池化结果写入DRAM
-                // n_cycles_write_output = store_output(ofmap, this->dram_instance, i, j, cols, layer_parameters);
-                // std::cout<<"write output cycles : "<<n_cycles_write_output<<std::endl;
-                // // std::cout<<"debug"<<std::endl;
-                // //this->n_cycles += n_cycles_write_output;
-
-                // //n_cycles_pooling_and_write_output = n_cycles_process_pooling + n_cycles_write_output;
-                // //std::cout<<"process_pooling and write output cycles : "<<n_cycles_pooling_and_write_output<<std::endl;
             } else {
-                // std::cout<<" without pooling "<<std::endl;
                 n_cycles_process_pooling = 0;
-                // n_cycles_write_output = 0;
-                // std::cout<<"process_pooling cycles : "<<n_cycles_process_pooling<<std::endl;
-                // std::cout<<"write output cycles : "<<n_cycles_write_output<<std::endl;
-                // //n_cycles_pooling_and_write_output = 0;
-                // //std::cout<<"process_pooling and write output cycles : "<<n_cycles_pooling_and_write_output<<std::endl;
             }
 
-            // if(i==num_weight_buffer_fold-1 && j==X_-1){
-            //     // 最后一次计算结束，加上输出写入DRAM所需周期
-            //     std::cout<<"add write output"<<std::endl;
-            //     this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_write_neuron_state+n_cycles_process_pooling+n_cycles_write_output);
-            //     // std::cout<<std::endl;
-            //     std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
-            // } else {
-            //     std::cout<<"without write output"<<std::endl;
-            //     this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_process_pooling);
-            //     // std::cout<<std::endl;
-            //     std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
-            // }
-
             this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_process_pooling);
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
 
             // 切换输入缓冲区
             PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
@@ -3842,14 +4565,19 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
         PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1); 
 
         // 将当前权重循环得到的输出结果写入DRAM
-        int n_cycles_write_neuron_state = store_neuron_state(nfmap, dram_instance, i, cols, layer_parameters);
-        int n_cycles_write_output = store_pooling_output(ofmap, dram_instance, i, cols, layer_parameters);
+        int n_cycles_write_neuron_state = store_neuron_state_CHW(nfmap, dram_instance, i, cols, layer_parameters);
+        int n_cycles_write_output = store_pooling_output_CHW(ofmap, dram_instance, i, cols, layer_parameters);
+        std::cout<<std::endl;
         std::cout<<"write neuron state result cycles : "<<n_cycles_write_neuron_state<<std::endl;
         std::cout<<"write output result cycles : "<<n_cycles_write_output<<std::endl;
+        std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
 
         if(i == num_weight_buffer_fold-1){
             this->n_cycles += n_cycles_write_neuron_state;
             this->n_cycles += n_cycles_write_output;
+            std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+        } else {
+            std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
         }
 
         delete[] this->on_chip_sram;
@@ -3901,9 +4629,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
-
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
 
     this->records.clear();
 
@@ -3913,16 +4643,15 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_DataFlow_2(int 
     return {ifmap, filter, ofmap, nfmap};
 }
 
-// 通道后置，卷积后接池化
 std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters){
-    
     std::cout<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<"                                  Call runConvandPooling_HWC function                                    "<<std::endl;
+    std::cout<<"                                  Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<std::endl;
     
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    // std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_conv++;
     this->layer_name = "conv"+std::to_string(this->n_conv);
 
@@ -4037,7 +4766,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
     num_weight_obtained += num_weight_data;
     this->n_cycles += n_cycles_load_first_weight;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
-    std::cout<<"load the first weights cycles : "<<n_cycles_load_first_weight<<"          and current cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
     
     // 2. input buffer
     int num_input_buffer_need = R * Y_padded * C;
@@ -4050,8 +4779,8 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
     // 第一次加载输入数据到片上buffer
     int n_cycles_load_first_input = load_input_data_HWC(layer_id, ifmap, this->dram_instance, 0, layer_parameters);
     this->n_cycles += n_cycles_load_first_input;
-    std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<"          and current cycles is : "<<this->n_cycles<<std::endl;
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
 
     // 3. output buffer
     int num_output_buffer_need = Y_/2 * this->stonne_cfg.m_MSNetworkCfg.ms_cols;  // 卷积的输出，后接池化模块
@@ -4076,20 +4805,18 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
         int sram_size = 2 * Y_ * cols; 
         this->on_chip_sram = new int[sram_size]();
 
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         int count_rows = 0; // 用于累加卷积的输出到片上SRAM计数
         for(int j=0; j<X_; j++){
             std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
-            std::cout<<"current input loop begin cycles : "<<this->n_cycles<<"          and current cycles is : "<<this->n_cycles<<std::endl;
 
             // *** 加载下一块输入数据，与上一块数据的计算并行
             int n_cycles_load_next_input;
             if((j+1)<X_ || (i+1)<num_weight_buffer_fold) {
                 n_cycles_load_next_input = load_input_data_HWC(layer_id, ifmap, this->dram_instance, (j+1)%X_, layer_parameters);
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             } else {
                 n_cycles_load_next_input = 0;
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             }
 
             // *** 加载下一块权重数据，与当前权重循环的计算过程并行
@@ -4101,20 +4828,20 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
                 num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
                 n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
                 num_weight_obtained += num_weight_data;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             } else {
                 n_cycles_load_next_weight = 0;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             }
 
             // *** 重排和计算，将neuron state写入片上buffer，将output累积到片上sram
             int n_cycles_process = process_conv_and_pooling_HWC(layer_id, i, j, cols, count_rows, layer_parameters);
             count_rows++;
-            std::cout<<"process_conv_and_pooling cycles : "<<n_cycles_process<<std::endl;
+            std::cout<<"process_conv_and_pooling need cycles : "<<n_cycles_process<<std::endl;
 
             // 1. 将神经元状态写入DRAM
             int n_cycles_write_neuron_state = store_neuron_state_HWC(nfmap, this->dram_instance, i, j, cols, layer_parameters);
-            std::cout<<"write neuron_state cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            // std::cout<<"write neuron_state cycles : "<<n_cycles_write_neuron_state<<std::endl;
 
             // 2. 对累计的输出进行池化
             int n_cycles_process_pooling;
@@ -4124,32 +4851,37 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
 
                 // 调用池化模块
                 n_cycles_process_pooling = process_pooling_HWC(i, j, cols, layer_parameters);
-                std::cout<<"process_pooling cycles : "<<n_cycles_process_pooling<<std::endl;
+                std::cout<<"process_pooling need cycles : "<<n_cycles_process_pooling<<std::endl;
 
                 // 将池化结果写入DRAM
                 n_cycles_write_output = store_pooling_output_HWC(ofmap, dram_instance, i, j, cols, layer_parameters);
-                std::cout<<"write output cycles : "<<n_cycles_write_output<<std::endl;
+                //std::cout<<"write output cycles : "<<n_cycles_write_output<<std::endl;
             } else {
                 n_cycles_process_pooling = 0;
                 n_cycles_write_output = 0;
             }
 
             this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_process_pooling);
-            std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            std::cout<<std::endl;
+
+            std::cout<<"write neuron_state need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            std::cout<<"write output need cycles : "<<n_cycles_write_output<<std::endl;
+            std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
 
             // 加上最后一次写数据所需的周期
             if(i==num_weight_buffer_fold-1 && j==X_-1){
-                std::cout<<"---- The last time write data into DRAM ------"<<std::endl;
                 this->n_cycles += n_cycles_write_output;
                 this->n_cycles += n_cycles_write_neuron_state;
-                std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
             }
 
             PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
         }
 
         PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1); 
-
         delete[] this->on_chip_sram;
     }
 
@@ -4187,11 +4919,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
-
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
-
-    this->records.clear();
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
 
     // std::cout<<"below is ofmap data : "<<std::endl;
     // for(int channels=0; channels<K; channels++){
@@ -4207,6 +4939,8 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HWC(int layer_i
     //     std::cout<<std::endl;
     // }
 
+    this->records.clear();
+
     delete[] ofmap_cpu;
     delete[] nfmap_cpu;
 
@@ -4217,10 +4951,11 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
     std::cout<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<"                                  Call runConvandPooling_HCW function                                    "<<std::endl;
+    std::cout<<"                                  Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     std::cout<<"****************************************************************************************************************"<<std::endl;
     std::cout<<std::endl;
     
-    std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    // std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
     this->n_conv++;
     this->layer_name = "conv"+std::to_string(this->n_conv);
 
@@ -4333,7 +5068,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
     num_weight_obtained += num_weight_data;
     this->n_cycles += n_cycles_load_first_weight;
     PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
-    std::cout<<"load the first weights cycles : "<<n_cycles_load_first_weight<<"          and current cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
     
     // 2. input buffer
     int num_input_buffer_need = R * Y_padded * C;
@@ -4346,7 +5081,7 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
     // 第一次加载输入数据到片上buffer
     int n_cycles_load_first_input = load_input_data_HCW(layer_id, ifmap, this->dram_instance, 0, layer_parameters);
     this->n_cycles += n_cycles_load_first_input;
-    std::cout<<"load the first input cycles : "<<n_cycles_load_first_input<<"          and current cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
     PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
 
     // 3. output buffer
@@ -4375,20 +5110,18 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
         int sram_size = 2 * Y_ * cols; 
         this->on_chip_sram = new int[sram_size]();
 
-        std::cout<<"current weight loop begin cycles : "<<this->n_cycles<<std::endl;
         int count_rows = 0; // 用于累加卷积的输出到片上SRAM计数
         for(int j=0; j<X_; j++){
             std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
-            std::cout<<"current input loop begin cycles : "<<this->n_cycles<<"          and current cycles is : "<<this->n_cycles<<std::endl;
 
             // *** 加载下一块输入数据，与上一块数据的计算并行
             int n_cycles_load_next_input;
             if((j+1)<X_ || (i+1)<num_weight_buffer_fold) {
                 n_cycles_load_next_input = load_input_data_HCW(layer_id, ifmap, this->dram_instance, (j+1)%X_, layer_parameters);
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             } else {
                 n_cycles_load_next_input = 0;
-                std::cout<<"load next input cycles : "<<n_cycles_load_next_input<<std::endl;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
             }
 
             // *** 加载下一块权重数据，与当前权重循环的计算过程并行
@@ -4400,20 +5133,20 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
                 num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
                 n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
                 num_weight_obtained += num_weight_data;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             } else {
                 n_cycles_load_next_weight = 0;
-                std::cout<<"load next weight cycles : "<<n_cycles_load_next_weight<<std::endl;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
             }
 
             // *** 重排和计算，将neuron state写入片上buffer，将output累积到片上sram
             int n_cycles_process = process_conv_and_pooling_HCW(layer_id, i, j, cols, count_rows, layer_parameters);
             count_rows++;
-            std::cout<<"process_conv_and_pooling cycles : "<<n_cycles_process<<std::endl;
+            std::cout<<"process_conv_and_pooling need cycles : "<<n_cycles_process<<std::endl;
 
             // 1. 将神经元状态写入DRAM
             int n_cycles_write_neuron_state = store_neuron_state_HCW(nfmap, this->dram_instance, i, j, cols, layer_parameters);
-            std::cout<<"write neuron_state cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            // std::cout<<"write neuron_state cycles : "<<n_cycles_write_neuron_state<<std::endl;
 
             // 2. 对累计的输出进行池化
             int n_cycles_process_pooling;
@@ -4423,32 +5156,37 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
 
                 // 调用池化模块
                 n_cycles_process_pooling = process_pooling_HCW(i, j, cols, layer_parameters);
-                std::cout<<"process_pooling cycles : "<<n_cycles_process_pooling<<std::endl;
+                std::cout<<"process_pooling need cycles : "<<n_cycles_process_pooling<<std::endl;
 
                 // 将池化结果写入DRAM
                 n_cycles_write_output = store_pooling_output_HCW(ofmap, dram_instance, i, j, cols, layer_parameters);
-                std::cout<<"write output cycles : "<<n_cycles_write_output<<std::endl;
+                // std::cout<<"write output cycles : "<<n_cycles_write_output<<std::endl;
             } else {
                 n_cycles_process_pooling = 0;
                 n_cycles_write_output = 0;
             }
 
             this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_process_pooling);
-            std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            std::cout<<std::endl;
+
+            std::cout<<"write neuron_state need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            std::cout<<"write output need cycles : "<<n_cycles_write_output<<std::endl;
+            std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
 
             // 加上最后一次写数据所需的周期
             if(i==num_weight_buffer_fold-1 && j==X_-1){
-                std::cout<<"---- The last time write data into DRAM ------"<<std::endl;
                 this->n_cycles += n_cycles_write_output;
                 this->n_cycles += n_cycles_write_neuron_state;
-                std::cout<<"Global cycles : "<<this->n_cycles<<std::endl;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
             }
 
             PingPongBuffer_Switch(this->ppbuf_input, this->input_buffer_0, this->input_buffer_1);
         }
 
         PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1); 
-
         delete[] this->on_chip_sram;
     }
 
@@ -4477,6 +5215,282 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
         }
     }
 
+    // 检查输出
+    for(int i=0; i<X_*Y_*K/4; i++){
+        //float difference = fabs(this->ofmap[j]-this->ofmap_cpu[j]);
+        float difference = fabs(ofmap[i]-ofmap_cpu[i]);
+        if(difference>0){
+            std::cout<<"ERROR position : "<<i<<"  value ofmap simlator : "<<ofmap[i]<<"  value ofmap cpu : "<<ofmap_cpu[i]<<std::endl;
+            assert(false);
+        }
+    }
+
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+
+    this->records.clear();
+
+    delete[] ofmap_cpu;
+    delete[] nfmap_cpu;
+
+    return {ifmap, filter, ofmap, nfmap};
+}
+
+std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW_bank(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters) {
+    std::cout<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<"                                  Call runConvandPooling_HCW_bank function                                    "<<std::endl;
+    std::cout<<"                                  Start simulation layer : "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    std::cout<<"****************************************************************************************************************"<<std::endl;
+    std::cout<<std::endl;
+    
+    // std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m         "<<layer_id<<" "<<layer_parameters.type<<std::endl;
+    this->n_conv++;
+    this->layer_name = "conv"+std::to_string(this->n_conv);
+
+    // 提取层参数
+    int X = layer_parameters.X;
+    int Y = layer_parameters.Y;
+    int R = layer_parameters.R;
+    int S = layer_parameters.S;
+    int C = layer_parameters.C;
+    int K = layer_parameters.K; // 输出通道数
+    int P = layer_parameters.P; // 池化
+    int stride = layer_parameters.stride; // 步长
+    int X_padded = X + 2*P;
+    int Y_padded = Y + 2*P;
+
+    // 计算输出特征图维度
+    int X_ = (X + 2*P - R)/stride + 1;
+    int Y_ = (Y + 2*P - S)/stride + 1;
+
+    // 建模存储真实的数据
+    int ifmap_size = X * Y * C;
+    int filter_size = R * S * C * K;
+    int ofmap_size = X_ * Y_ * K / 4;   
+    int nfmap_size = X_ * Y_ * K;  
+
+    if(layer_id == 1){ // 对于第一个网络层，对输出数据进行随机初始化
+        ifmap = new int[ifmap_size];
+        for(int i=0; i<ifmap_size; i++){
+            ifmap[i] = rand()%2;
+        }
+    } else {
+        // 将输入数据和基地址和输出数据的基地址交换
+        uint64_t temp = this->input_offset;
+        this->input_offset = this->output_offset;
+        this->output_offset = temp;
+    }
+
+    filter = new int[filter_size];
+    ofmap = new int[ofmap_size]();
+    nfmap = new int[nfmap_size]();
+    int* ofmap_cpu = new int[ofmap_size]();
+    int* nfmap_cpu = new int[nfmap_size]();
+
+    for(int i=0; i<filter_size; i++){
+        filter[i] = rand()%((this->max_weight-this->min_weight+1)+this->min_weight);
+    }
+
+    // 例化DRAMsim，模拟从DRAM取数据到片上buffer的过程
+    this->dram_instance = new Dram(read_callback,write_callback);
+    this->dram_instance->set_read_request_fifo(this->read_request_fifo);
+    this->dram_instance->set_write_request_fifo(this->write_request_fifo);
+
+    // std::cout<<"below is ifmap data : "<<std::endl;
+    // for(int channels=0; channels<C; channels++){
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     for(int p=0; p<X; p++){
+    //         for(int q=0; q<Y; q++){
+    //             // int index = p * Y * C + q * C + channels;  // HWC layout
+    //             int index = p * C * Y + channels * Y + q; // HCW layout
+    //             std::cout<<ifmap[index]<<"  ";
+    //         }
+    //         std::cout<<std::endl;
+    //     }
+    //     std::cout<<std::endl;
+    // }
+
+    // -------------------------------------------------------------------------------------------------------------------------------------------------
+
+    // 从DRAM中取数据需要的一些（计数器）
+    int num_weight_buffer_fold = std::ceil(K / (float)this->stonne_cfg.m_MSNetworkCfg.ms_cols); // 权重数据需要从DRAM中取出多少次，当输出通道数很大时，需要分时复用
+
+    // 1. weight buffer
+    int num_weight_buffer_need = R * S * C * this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+    assert(num_weight_buffer_need <= this->num_weight);
+    this->ppbuf_weight = new PingPong_Buffer;
+    this->weight_buffer_0 = new int[num_weight_buffer_need];
+    this->weight_buffer_1 = new int[num_weight_buffer_need];
+    PingPongBuffer_Init(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
+
+    int num_weight_obtained = 0;  // 下面开始从DRAM中取数据，记录已经从片外取出的数据个数，用于下次取数据的基地址
+    // 第一次从DRAM中取权重数据
+    int num_weight_data; // 要从DRAM中取的权重个数
+    if(num_weight_buffer_fold>1){
+        num_weight_data = R * S * C * this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+    } else {
+        num_weight_data = R * S * C * K;
+    }
+    int n_cycles_load_first_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
+    num_weight_obtained += num_weight_data;
+    this->n_cycles += n_cycles_load_first_weight;
+    PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1);
+    std::cout<<"load the first weights need cycles : "<<n_cycles_load_first_weight<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
+
+    // 2. input buffer
+    int num_input_bank_need = Y_padded*C;
+    assert(num_input_bank_need*(R+1) <= this->num_input);
+    this->input_base_bank_0 = new int[num_input_bank_need];
+    this->input_base_bank_1 = new int[num_input_bank_need];
+    this->ppbuf_bank = new PingPong_Buffer;
+    this->input_pp_bank_0 = new int[num_input_bank_need];
+    this->input_pp_bank_1 = new int[num_input_bank_need];
+    PingPongBuffer_Init(this->ppbuf_bank, this->input_pp_bank_0, this->input_pp_bank_1);
+
+    // 3. output buffer
+    // 池化后的结果不需要再进行转置，可以直接写入DRAM
+    int num_output_buffer_need = Y_/2 * this->stonne_cfg.m_MSNetworkCfg.ms_cols;  // 卷积的输出，后接池化模块
+    assert(num_output_buffer_need <= this->num_output);
+    this->output_buffer = new int[num_output_buffer_need]();
+    this->output_buffer_cpu = new int[num_output_buffer_need]();
+
+    // 4. neuron state buffer
+    // 计算结果需要转置
+    int num_neuron_state_buffer_need = Y_ * this->stonne_cfg.m_MSNetworkCfg.ms_cols; 
+    assert(num_neuron_state_buffer_need <= this->num_neuron_state);
+    this->neuron_state_buffer = new int[num_neuron_state_buffer_need]();
+    // this->neuron_state_buffer_cpu = new int[num_neuron_state_buffer_need]();
+
+    for(int i=0; i<num_weight_buffer_fold; i++){
+        std::cout<<"=============================================== weight loop ===================================================== "<<i<<"/"<<num_weight_buffer_fold-1<<std::endl;
+
+        // 权重数据是一个输出通道一个输出通道进行读取的
+        int start_col = i*this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+        int end_col = std::min<int>(start_col+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
+        int cols = end_col - start_col;  
+
+        // 建模片上SRAM，用于累积卷积的输出进行池化
+        int sram_size = 2 * Y_ * cols; 
+        this->on_chip_sram = new int[sram_size]();
+
+        // 第一次加载input data
+        int n_cycles_load_first_input = load_input_data_HCW_bank(layer_id, ifmap, dram_instance, 0, layer_parameters);
+        PingPongBuffer_Switch(this->ppbuf_bank, this->input_pp_bank_0, this->input_pp_bank_1);
+        this->n_cycles += n_cycles_load_first_input;
+        std::cout<<"load the first input need cycles : "<<n_cycles_load_first_input<<"     and the current global cycles is : "<<this->n_cycles<<std::endl;
+
+        int count_rows = 0; // 用于累加卷积的输出到片上SRAM计数
+        for(int j=0; j<X_; j++){
+            std::cout<<"======================================== input loop ========================================= "<<j<<"/"<<X_-1<<std::endl;
+            //std::cout<<"current input loop begin cycles : "<<this->n_cycles<<"          and current cycles is : "<<this->n_cycles<<std::endl;
+
+            // *** 加载下一块输入数据，与上一块数据的计算并行
+            int n_cycles_load_next_input;
+            if((j+1)<X_) {
+                n_cycles_load_next_input = load_input_data_HCW_bank(layer_id, ifmap, this->dram_instance, j+1, layer_parameters);
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
+            } else {
+                n_cycles_load_next_input = 0;
+                std::cout<<"load next input need cycles : "<<n_cycles_load_next_input<<std::endl;
+            }
+
+            // *** 加载下一块权重数据，与当前权重循环的计算过程并行
+            int n_cycles_load_next_weight;
+            if(i+1<num_weight_buffer_fold && j==0){
+                int start_col_next = (i+1)*this->stonne_cfg.m_MSNetworkCfg.ms_cols;
+                int end_col_next = std::min<int>(start_col_next+this->stonne_cfg.m_MSNetworkCfg.ms_cols, K);
+                int cols_next = end_col_next - start_col_next;
+                num_weight_data = R * S * C * cols_next;  // 要从DRAM中取出的数据个数
+                n_cycles_load_next_weight = load_weight_data_ppbuffer(filter, this->dram_instance, num_weight_obtained, num_weight_data);
+                num_weight_obtained += num_weight_data;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
+            } else {
+                n_cycles_load_next_weight = 0;
+                std::cout<<"load next weight need cycles : "<<n_cycles_load_next_weight<<std::endl;
+            }
+
+            // *** 重排和计算，将neuron state写入片上buffer，将output累积到片上sram
+            int n_cycles_process = process_conv_and_pooling_HCW_bank(layer_id, i, j, cols, count_rows, layer_parameters);
+            count_rows++;
+            std::cout<<"process_conv_and_pooling need cycles : "<<n_cycles_process<<std::endl;
+
+            // 1. 将神经元状态写入DRAM
+            int n_cycles_write_neuron_state = store_neuron_state_HCW(nfmap, this->dram_instance, i, j, cols, layer_parameters);
+            //std::cout<<"write neuron_state need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+
+            // 2. 对累计的输出进行池化
+            int n_cycles_process_pooling;
+            int n_cycles_write_output;
+            if(j>0 && j%2!=0){
+                count_rows=0;
+
+                // 调用池化模块
+                n_cycles_process_pooling = process_pooling_HCW(i, j, cols, layer_parameters);
+                std::cout<<"process_pooling need cycles : "<<n_cycles_process_pooling<<std::endl;
+
+                // 将池化结果写入DRAM
+                n_cycles_write_output = store_pooling_output_HCW(ofmap, dram_instance, i, j, cols, layer_parameters);
+                //std::cout<<"write output need cycles : "<<n_cycles_write_output<<std::endl;
+            } else {
+                n_cycles_process_pooling = 0;
+                n_cycles_write_output = 0;
+            }
+
+            this->n_cycles += std::max(n_cycles_load_next_input+n_cycles_load_next_weight, n_cycles_process+n_cycles_process_pooling);
+            std::cout<<"The current input loop calculation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+            std::cout<<std::endl;
+
+            std::cout<<"write neuron_state need cycles : "<<n_cycles_write_neuron_state<<std::endl;
+            std::cout<<"write output need cycles : "<<n_cycles_write_output<<std::endl;
+            std::cout<<"write all result need cycles : "<<(n_cycles_write_output + n_cycles_write_neuron_state)<<std::endl;
+
+             // 加上最后一次写数据所需的周期
+            if(i==num_weight_buffer_fold-1 && j==X_-1){
+                this->n_cycles += n_cycles_write_output;
+                this->n_cycles += n_cycles_write_neuron_state;
+                std::cout<<"Write the last output result to DRAM, and the global cycles is : "<<this->n_cycles<<std::endl;
+            } else {
+                std::cout<<"No need to add the number of cycles required for writing, and the global cycles is : "<<this->n_cycles<<std::endl;
+            }
+
+            PingPongBuffer_Switch(this->ppbuf_bank, this->input_pp_bank_0, this->input_pp_bank_1);
+        }
+
+        PingPongBuffer_Switch(this->ppbuf_weight, this->weight_buffer_0, this->weight_buffer_1); 
+        delete[] this->on_chip_sram;
+    }
+
+    delete[] this->weight_buffer_0;
+    delete[] this->weight_buffer_1;
+    delete this->ppbuf_weight;
+
+    delete this->ppbuf_bank;
+    delete[] this->input_base_bank_0;
+    delete[] this->input_base_bank_1;
+    delete[] this->input_pp_bank_0;
+    delete[] this->input_pp_bank_1;
+
+    delete[] this->output_buffer;
+    delete[] this->output_buffer_cpu;
+    delete[] this->neuron_state_buffer;
+
+    // 所有tile计算完毕，验证写到DRAM中的结果是否正确
+    conv_and_pooling_compute_HCW(R, S, C, K, P, stride, X, Y, ifmap, filter, ofmap_cpu, nfmap_cpu, this->stonne_cfg.V_th);
+
+    // 检查神经元状态
+    for(int i=0; i<X_*Y_*K; i++){
+        //float difference = fabs(this->ofmap[j]-this->ofmap_cpu[j]);
+        float difference = fabs(nfmap[i]-nfmap_cpu[i]);
+        if(difference>0){
+            std::cout<<"ERROR position : "<<i<<"  value nfmap simlator : "<<nfmap[i]<<"  value nfmap cpu : "<<nfmap_cpu[i]<<std::endl;
+            assert(false);
+        }
+    }
+
         // 检查输出
     for(int i=0; i<X_*Y_*K/4; i++){
         //float difference = fabs(this->ofmap[j]-this->ofmap_cpu[j]);
@@ -4487,19 +5501,32 @@ std::tuple<int*, int*, int*, int*> Controller::runConvandPooling_HCW(int layer_i
         }
     }
 
-    std::cout<<"current cycles : "<<this->n_cycles<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
+    std::cout<<"The current layer simulation ends, and the global cycles is : "<<this->n_cycles<<std::endl;
+    std::cout<<"             \033[1;32m"<<"Test passed correctly"<<"\033[0m"<<std::endl;
+    std::cout<<"--------------------------------------------------------------------------------------------"<<std::endl;
 
-    std::cout<<"\033[1;32m"<<"OVER Test passed correctly"<<"\033[0m"<<std::endl<<std::endl;
-
-    this->records.clear();
-
-
+    // std::cout<<"below is ofmap data : "<<std::endl;
+    // for(int channels=0; channels<K; channels++){
+    //     std::cout<<"channels : "<<channels<<std::endl;
+    //     for(int p=0; p<X_/2; p++){
+    //         for(int q=0; q<Y_/2; q++){
+    //             // int index = p * Y_/2 * K + q * K + channels;  // HWC layout
+    //             int index = p * K * Y_/2 + channels * Y_/2 + q; // HCW layout
+    //             std::cout<<ofmap[index]<<"  ";
+    //         }
+    //         std::cout<<std::endl;
+    //     }
+    //     std::cout<<std::endl;
+    // }
 
     delete[] ofmap_cpu;
     delete[] nfmap_cpu;
 
     return {ifmap, filter, ofmap, nfmap};
 }
+
 
 std::tuple<int*, int*, int*, int*> Controller::runConv(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters){
     std::cout<<"\033[1;33m"<<"Start simulation layer : "<<"\033[0m       "<<layer_id<<" "<<layer_parameters.type<<std::endl;

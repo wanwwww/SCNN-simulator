@@ -645,6 +645,31 @@ void conv_compute_HCW(int R, int S, int C, int K, int P, int strides, int X, int
                 }
 
                 int out_idx = (i * K + k) * outY + j;
+
+                // if(out_idx == 922){
+                //     std::cout<<"sum : "<<sum<<std::endl;
+                //     for (int c = 0; c < C; ++c) {
+                //         for (int r = 0; r < R; ++r) {
+                //             for (int s = 0; s < S; ++s) {
+                //                 int in_row = i * strides + r;
+                //                 int in_col = j * strides + s;
+                //                 int pad_idx = c * (padded_X * padded_Y) + in_row * padded_Y + in_col;
+                //                 std::cout<<padded_input[pad_idx]<<"  ";
+                //             }
+                //         }
+                //     }
+                //     std::cout<<std::endl;
+                //     for (int c = 0; c < C; ++c) {
+                //         for (int r = 0; r < R; ++r) {
+                //             for (int s = 0; s < S; ++s) {
+                //                 int filt_idx = k * (C * R * S) + c * (R * S) + r * S + s;
+                //                 std::cout<<filters[filt_idx]<<"  ";
+                //             }
+                //         }
+                //     }
+                //     std::cout<<std::endl;
+                // }
+
                 sum += neuron_state[out_idx];
 
                 if (sum >= V_th) {

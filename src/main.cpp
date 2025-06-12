@@ -162,11 +162,13 @@ int main(int argc, char *argv[]) {
             if(layers[i].type == "conv_pooling") {
 
                 if(layout == "CHW"){  // 通道前置
-                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_DataFlow_2(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_CHW(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 } else if(layout == "HWC"){  // 通道后置
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_HWC(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 } else if(layout == "HCW"){  // 折中
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_HCW(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
+                } else if(layout == "HCW_bank"){
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_HCW_bank(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 } else {
                     std::cout<<"\033[1;31m"<<"Unsupported layout types !"<<"\033[0m"<<std::endl;
                     assert(false);
@@ -178,11 +180,13 @@ int main(int argc, char *argv[]) {
             } else if(layers[i].type == "conv") {
 
                 if(layout == "CHW"){  // 通道前置
-                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_DataFlow_3(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_CHW(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 } else if(layout == "HWC"){  // 通道后置
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_HWC(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 } else if(layout == "HCW"){  // 折中
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_HCW(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
+                } else if(layout == "HCW_bank"){
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_HCW_bank(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 } else {
                     std::cout<<"\033[1;31m"<<"Unsupported layout types !"<<"\033[0m"<<std::endl;
                     assert(false);
@@ -192,7 +196,7 @@ int main(int argc, char *argv[]) {
                 delete[] nfmap;
 
             } else if(layers[i].type == "fc") {
-                std::tie(ifmap, filter, ofmap, nfmap) = control->runFC_2(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
+                std::tie(ifmap, filter, ofmap, nfmap) = control->runFC(layer_id, ifmap, filter, ofmap, nfmap, layers[i]);
                 delete[] ifmap;
                 delete[] filter;
                 delete[] nfmap;
@@ -200,15 +204,18 @@ int main(int argc, char *argv[]) {
                 std::cout<<"\033[1;31m"<<"Unsupported layer types !"<<"\033[0m"<<std::endl;
                 assert(false);
             }
+
         } else {  // 对于后面的层，输入是上一层的输出
             if(layers[i].type == "conv_pooling") {
 
                 if(layout == "CHW"){  // 通道前置
-                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_DataFlow_2(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_CHW(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 } else if(layout == "HWC"){  // 通道后置
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_HWC(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 } else if(layout == "HCW"){  // 折中
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_HCW(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
+                } else if(layout == "HCW_bank"){
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConvandPooling_HCW_bank(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 } else {
                     std::cout<<"\033[1;31m"<<"Unsupported layout types !"<<"\033[0m"<<std::endl;
                     assert(false);
@@ -220,11 +227,13 @@ int main(int argc, char *argv[]) {
             } else if(layers[i].type == "conv") {
 
                 if(layout == "CHW"){  // 通道前置
-                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_DataFlow_3(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_CHW(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 } else if(layout == "HWC"){  // 通道后置
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_HWC(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 } else if(layout == "HCW"){  // 折中
                     std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_HCW(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
+                } else if(layout == "HCW_bank"){
+                    std::tie(ifmap, filter, ofmap, nfmap) = control->runConv_HCW_bank(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 } else {
                     std::cout<<"\033[1;31m"<<"Unsupported layout types !"<<"\033[0m"<<std::endl;
                     assert(false);
@@ -235,7 +244,7 @@ int main(int argc, char *argv[]) {
                 delete[] nfmap;
 
             } else if(layers[i].type == "fc") {
-                std::tie(ifmap, filter, ofmap, nfmap) = control->runFC_2(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
+                std::tie(ifmap, filter, ofmap, nfmap) = control->runFC(layer_id, ofmap, filter, ifmap, nfmap, layers[i]);
                 delete[] ifmap;
                 delete[] filter;
                 delete[] nfmap;

@@ -55,11 +55,11 @@ public:
     // // unsigned int neuron_state_dram_size  这个值的大小和神经元阈值的大小有关，暂不设置 
     
     // 将input_buffer设置为多bank结构
-    int* input_bank_base_0;
-    int* input_bank_base_1;
+    int* input_base_bank_0;
+    int* input_base_bank_1;
     PingPong_Buffer* ppbuf_bank;
-    int* input_bank_0;
-    int* input_bank_1;
+    int* input_pp_bank_0;
+    int* input_pp_bank_1;
 
 
     // 片上buffer的大小
@@ -167,20 +167,22 @@ public:
     // std::tuple<int*, int*, int*, int*> runConvandPooling(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     // std::tuple<int*, int*, int*, int*> runFC_0(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     // std::tuple<int*, int*, int*, int*> runFC_1(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
-    std::tuple<int*, int*, int*, int*> runFC_2(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);  // 双buffer
+    std::tuple<int*, int*, int*, int*> runFC(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);  // 双buffer
 
     // std::tuple<int*, int*, int*, int*> runConv_DataFlow_0(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters); // 单buffer
     // std::tuple<int*, int*, int*, int*> runConv_DataFlow_1(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters); // 乒乓buffer
     // std::tuple<int*, int*, int*, int*> runConv_DataFlow_2(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters); 
-    std::tuple<int*, int*, int*, int*> runConv_DataFlow_3(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters); 
+    std::tuple<int*, int*, int*, int*> runConv_CHW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters); 
     std::tuple<int*, int*, int*, int*> runConv_HWC(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     std::tuple<int*, int*, int*, int*> runConv_HCW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
+    std::tuple<int*, int*, int*, int*> runConv_HCW_bank(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     // std::tuple<int*, int*, int*, int*> runConvandPooling_DataFlow_0(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     // std::tuple<int*, int*, int*, int*> runConvandPooling_DataFlow_1(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
-    std::tuple<int*, int*, int*, int*> runConvandPooling_DataFlow_2(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
+    std::tuple<int*, int*, int*, int*> runConvandPooling_CHW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     //std::tuple<int*, int*, int*, int*> runFC_DataFlow(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     std::tuple<int*, int*, int*, int*> runConvandPooling_HWC(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
     std::tuple<int*, int*, int*, int*> runConvandPooling_HCW(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
+    std::tuple<int*, int*, int*, int*> runConvandPooling_HCW_bank(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
 
     // test
     std::tuple<int*, int*, int*, int*> runConv(int layer_id, int* ifmap, int* filter, int* ofmap, int* nfmap, layer_topology layer_parameters);
@@ -196,17 +198,18 @@ public:
     int load_input_data_CHW(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters);
     int load_input_data_HWC(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters);
     int load_input_data_HCW(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters);
+    int load_input_data_HCW_bank(int layer_id, int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters);
     // int load_input_data_step1_onebuffer(int* ifmap, Dram* dram_instance, int j, layer_topology layer_parameters);
     // int store_output_and_neuronstate_data(int* ofmap, int* nfmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters); // conv
-    int store_neuron_state(int* nfmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters); // conv_and_pooling
+    int store_neuron_state_CHW(int* nfmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters); // conv_and_pooling
     int store_neuron_state_HWC(int* nfmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters);
     int store_neuron_state_HCW(int* nfmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters);
 
-    int store_conv_output(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters);  // conv
+    int store_conv_output_CHW(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters);  // conv
     int store_conv_output_HWC(int* ofmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters);
     int store_conv_output_HCW(int* ofmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters);
 
-    int store_pooling_output(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters);  // conv  and  pooling
+    int store_pooling_output_CHW(int* ofmap, Dram* dram_instance, int i, int cols, layer_topology layer_parameters);  // conv  and  pooling
     int store_pooling_output_HWC(int* ofmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters); 
     int store_pooling_output_HCW(int* ofmap, Dram* dram_instance, int i, int j, int cols, layer_topology layer_parameters); 
 
@@ -221,18 +224,21 @@ public:
     int im2col_CHW(int start, int num, layer_topology layer_parameters);
     int im2col_HWC(int start, int num, layer_topology layer_parameters);
     int im2col_HCW(int start, int num, layer_topology layer_parameters);
+    int im2col_HCW_bank(int start, int num, layer_topology layer_parameters);
     // int process_conv(int i, int j, int cols, layer_topology layer_parameters);
     // int process_conv_1(int i, int j, int cols, layer_topology layer_parameters);
     // int process_conv_2(int i, int j, int cols, layer_topology layer_parameters);
-    int process_conv_3(int layer_id, int i, int j, int cols, layer_topology layer_parameters);
+    int process_conv_CHW(int layer_id, int i, int j, int cols, layer_topology layer_parameters);
     int process_conv_HWC(int layer_id, int i, int j, int cols, layer_topology layer_parameters);
     int process_conv_HCW(int layer_id, int i, int j, int cols, layer_topology layer_parameters);
+    int process_conv_HCW_bank(int layer_id, int i, int j, int cols, layer_topology layer_parameters);
     
-    int process_conv_and_pooling(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters);
+    int process_conv_and_pooling_CHW(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters);
     int process_conv_and_pooling_HWC(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters);
     int process_conv_and_pooling_HCW(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters);
+    int process_conv_and_pooling_HCW_bank(int layer_id, int i, int j, int cols, int count_rows, layer_topology layer_parameters);
 
-    int process_pooling(int i, int j, int cols, layer_topology layer_parameters);
+    int process_pooling_CHW(int i, int j, int cols, layer_topology layer_parameters);
     int process_pooling_HWC(int i, int j, int cols, layer_topology layer_parameters);
     int process_pooling_HCW(int i, int j, int cols, layer_topology layer_parameters);
 
